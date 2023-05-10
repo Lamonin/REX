@@ -1,1 +1,1 @@
-# REX
+# REX - simple Ruby lexer
