@@ -35,6 +35,7 @@ class Special(Enum):
     CONST = auto()
     NEWLINE = auto()
     DOT = auto()
+    DOUBLE_DOT = auto()
     COMMA = auto()
     SEMICOLON = auto()
     LPAR = auto()
@@ -88,6 +89,7 @@ ops: dict[str, Operators | Special] = {
     '/=': Operators.SLASH_EQUALS,
     '%=': Operators.MOD_EQUALS,
     '.': Special.DOT,
+    '..': Special.DOUBLE_DOT,
     ',': Special.COMMA,
     ';': Special.SEMICOLON
 }
