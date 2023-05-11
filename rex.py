@@ -57,6 +57,7 @@ class Reserved(Enum):
 
 class Operators(Enum):
     EQUALS = auto()
+    NOT_EQUALS = auto()
     LESS = auto()
     GREATER = auto()
     LESS_EQUAL = auto()
@@ -86,6 +87,7 @@ ops: dict[str, Operators | Special] = {
     '/': Operators.SLASH,
     '%': Operators.MOD,
     '==': Operators.DOUBLE_EQUALS,
+    '!=': Operators.NOT_EQUALS,
     '+=': Operators.PLUS_EQUALS,
     '-=': Operators.MINUS_EQUALS,
     '*=': Operators.ASTERISK_EQUALS,
@@ -135,19 +137,32 @@ id_pattern = re.compile(r'^[a-zA-Z_]\w*\??$')
 
 
 class Lexem:
-    def __init__(self, token: Enum, value: str = None):
+    def __init__(self, token: Enum, value: str = None, pos: tuple[int, int] = None):
         self.token = token
         self.value = value
+        self.pos = pos if pos is not None else (-1, -1)
 
     def __str__(self):
-        return f"{self.token.name}" + (f":{self.value}" if self.value is not None else "")
+        return f"{self.token.name}" + (
+            f":{self.value}" if self.value is not None else "") + f":{self.pos[0]}:{self.pos[1]}"
 
 
 class Rex:
     def __init__(self, code: str):
         self.code: str = code
-        self.pos: int = -1
+        self.char_pos: int = 0
+        self.position: int = -1
+        self.line: int = 1
         self.lexem: Lexem | None = None
+
+    @property
+    def pos(self):
+        return self.position
+
+    @pos.setter
+    def pos(self, value):
+        self.char_pos += value - self.position
+        self.position = value
 
     def next_token(self) -> bool:
         def char() -> str:
@@ -159,17 +174,21 @@ class Rex:
         self.pos += 1
         while self.pos < code_len and char().isspace():
             if char() == '\n':
-                self.lexem = Lexem(Special.NEWLINE)
+                self.lexem = Lexem(Special.NEWLINE, pos=(self.line, self.char_pos))
+                self.line += 1
+                self.char_pos = 0
                 return True
             self.pos += 1
 
         # END OF FILE
         if self.pos >= code_len:
-            self.lexem = Lexem(Special.EOF)
+            self.lexem = Lexem(Special.EOF, pos=(self.line, self.char_pos))
             return False
 
         # OPERATORS
-        if char() in ops:
+        if char() in ops or char() in ['.', '!']:
+            start_pos = self.pos
+            start_char_pos = self.char_pos
             op = char()
 
             self.pos += 1
@@ -179,13 +198,15 @@ class Rex:
                 self.pos -= 1
 
             if op in ops:
-                self.lexem = Lexem(ops[op])
+                self.lexem = Lexem(ops[op], pos=(self.line, start_char_pos))
+            elif op == '.':
+                self.lexem = Lexem(Special.DOT, pos=(self.line, start_char_pos))
             else:
                 self.pos -= 1
-                self.lexem = Lexem(ops[char()])
+                self.lexem = Lexem(ops[char()], pos=(self.line, start_char_pos))
         # BRACKETS
         elif char() in brackets:
-            self.lexem = Lexem(brackets[char()])
+            self.lexem = Lexem(brackets[char()], pos=(self.line, self.char_pos))
         elif char() == '#':
             while self.pos < code_len and char() != '\n':
                 self.pos += 1
@@ -196,14 +217,12 @@ class Rex:
         elif char() == '"' or char() == "'":
             quote = char()
             start_pos = self.pos + 1
+            start_char_pos = self.char_pos
             self.pos += 1
             while self.pos < code_len and char() != quote:
                 self.pos += 1
             if self.pos < code_len and char() == quote:
-                if start_pos == self.pos:
-                    self.lexem = Lexem(Special.STR, self.code[start_pos:self.pos])
-                else:
-                    self.lexem = Lexem(Special.STR, self.code[start_pos:self.pos])
+                self.lexem = Lexem(Special.STR, self.code[start_pos:self.pos], pos=(self.line, start_char_pos))
             else:
                 if code_len - self.pos < 10:
                     example = self.code[start_pos:-1]
@@ -213,6 +232,7 @@ class Rex:
         # NUMBERS
         elif char().isdigit():
             start_pos = self.pos
+            start_char_pos = self.char_pos
 
             token_type = Special.INTEGER
             while self.pos < code_len and char().isdigit():
@@ -222,7 +242,7 @@ class Rex:
                 self.pos += 1
                 if self.pos < code_len and char().isdigit():
                     token_type = Special.FLOAT
-                    while char().isdigit():
+                    while self.pos < code_len and char().isdigit():
                         self.pos += 1
                 else:
                     self.pos -= 1
@@ -234,7 +254,8 @@ class Rex:
                 while self.pos < code_len and char().isdigit():
                     self.pos += 1
 
-            if self.pos < code_len and not char().isspace() and char() not in ops and char() not in [')', ']', '<', '>']:
+            if self.pos < code_len and not char().isspace() and char() not in ops and char() not in [')', ']', '<',
+                                                                                                     '>']:
                 raise Exception(f'Incorrect number token: {self.code[start_pos:self.pos + 1]}')
 
             block: str = self.code[start_pos:self.pos]
@@ -243,13 +264,14 @@ class Rex:
             self.pos -= 1
 
             if matches is not None and len(matches) == 1:
-                self.lexem = Lexem(token_type, block)
+                self.lexem = Lexem(token_type, block, pos=(self.line, start_char_pos))
             else:
                 raise Exception(f'Incorrect number token:{self.code[start_pos:self.pos]}')
 
         # KEYWORD OR IDENTIFIER
         elif char().isalpha() or char() == ['_']:
             start_pos = self.pos
+            start_char_pos = self.char_pos
 
             while self.pos < code_len and (char().isalnum() or char() in ['_', '?']):
                 self.pos += 1
@@ -261,11 +283,11 @@ class Rex:
                 raise Exception(f'Incorrect id token:{self.code[start_pos:self.pos]}')
 
             if block in keywords:
-                self.lexem = Lexem(keywords[block])
+                self.lexem = Lexem(keywords[block], pos=(self.line, start_char_pos))
             else:
-                self.lexem = Lexem(Special.ID, block)
+                self.lexem = Lexem(Special.ID, block, pos=(self.line, start_char_pos))
             self.pos -= 1
         else:
-            raise Exception('Incorrect token')
+            raise Exception('Incorrect token: ' + char())
 
         return True
