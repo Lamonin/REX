@@ -1,6 +1,5 @@
 import re
 from enum import Enum, auto
-from typing import Callable
 
 
 class KeyWords(Enum):
@@ -31,7 +30,10 @@ class KeyWords(Enum):
 class Special(Enum):
     ID = auto()
     NUM = auto()
+    INTEGER = auto()
+    FLOAT = auto()
     STR = auto()
+    EOF = auto()
     CONST = auto()
     NEWLINE = auto()
     DOT = auto()
@@ -44,6 +46,7 @@ class Special(Enum):
     RBR = auto()  # Right Square Bracket
     LFBR = auto()  # Right Figure Bracket
     RFBR = auto()  # Right Figure Bracket
+    VBR = auto()  # Vertical Bracket
 
 
 class Reserved(Enum):
@@ -88,7 +91,6 @@ ops: dict[str, Operators | Special] = {
     '*=': Operators.ASTERISK_EQUALS,
     '/=': Operators.SLASH_EQUALS,
     '%=': Operators.MOD_EQUALS,
-    '.': Special.DOT,
     '..': Special.DOUBLE_DOT,
     ',': Special.COMMA,
     ';': Special.SEMICOLON
@@ -101,6 +103,7 @@ brackets: dict[str, Special] = {
     ']': Special.RBR,
     '{': Special.LFBR,
     '}': Special.RFBR,
+    '|': Special.VBR
 }
 
 keywords: dict[str, KeyWords] = {
@@ -128,6 +131,7 @@ keywords: dict[str, KeyWords] = {
 }
 
 num_pattern = re.compile(r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$')
+id_pattern = re.compile(r'^[a-zA-Z_]\w*\??$')
 
 
 class Lexem:
@@ -161,7 +165,7 @@ class Rex:
 
         # END OF FILE
         if self.pos >= code_len:
-            self.lexem = None
+            self.lexem = Lexem(Special.EOF)
             return False
 
         # OPERATORS
@@ -210,12 +214,14 @@ class Rex:
         elif char().isdigit():
             start_pos = self.pos
 
+            token_type = Special.INTEGER
             while self.pos < code_len and char().isdigit():
                 self.pos += 1
 
             if self.pos < code_len and char() == '.':
                 self.pos += 1
                 if self.pos < code_len and char().isdigit():
+                    token_type = Special.FLOAT
                     while char().isdigit():
                         self.pos += 1
                 else:
@@ -228,8 +234,7 @@ class Rex:
                 while self.pos < code_len and char().isdigit():
                     self.pos += 1
 
-            if self.pos < code_len and not char().isspace() and char() not in ops and char() not in [')', ']', '<',
-                                                                                                     '>']:
+            if self.pos < code_len and not char().isspace() and char() not in ops and char() not in [')', ']', '<', '>']:
                 raise Exception(f'Incorrect number token: {self.code[start_pos:self.pos + 1]}')
 
             block: str = self.code[start_pos:self.pos]
@@ -238,18 +243,23 @@ class Rex:
             self.pos -= 1
 
             if matches is not None and len(matches) == 1:
-                self.lexem = Lexem(Special.NUM, block)
+                self.lexem = Lexem(token_type, block)
             else:
                 raise Exception(f'Incorrect number token:{self.code[start_pos:self.pos]}')
 
         # KEYWORD OR IDENTIFIER
-        elif char().isalpha() or char() == '_':
+        elif char().isalpha() or char() == ['_']:
             start_pos = self.pos
 
-            while self.pos < code_len and (char().isalnum() or char() == '_'):
+            while self.pos < code_len and (char().isalnum() or char() in ['_', '?']):
                 self.pos += 1
 
             block: str = self.code[start_pos:self.pos]
+
+            matches = id_pattern.findall(block)
+            if matches is None or len(matches) != 1:
+                raise Exception(f'Incorrect id token:{self.code[start_pos:self.pos]}')
+
             if block in keywords:
                 self.lexem = Lexem(keywords[block])
             else:
