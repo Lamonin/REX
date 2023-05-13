@@ -3,7 +3,9 @@ from rex import Rex
 
 f = open('sample_2.rb')
 
-rex = Rex(f.read())
+
+rex = Rex()
+rex.setup(f.read())
 
 f.close()
 

@@ -81,13 +81,13 @@ ops: dict[str, Operators | Special] = {
     '>': Operators.GREATER,
     '<=': Operators.LESS_EQUAL,
     '>=': Operators.GREATER_EQUAL,
+    '==': Operators.DOUBLE_EQUALS,
+    '!=': Operators.NOT_EQUALS,
     '+': Operators.PLUS,
     '-': Operators.MINUS,
     '*': Operators.ASTERISK,
     '/': Operators.SLASH,
     '%': Operators.MOD,
-    '==': Operators.DOUBLE_EQUALS,
-    '!=': Operators.NOT_EQUALS,
     '+=': Operators.PLUS_EQUALS,
     '-=': Operators.MINUS_EQUALS,
     '*=': Operators.ASTERISK_EQUALS,
@@ -146,9 +146,21 @@ class Lexem:
         return f"{self.token.name}" + (
             f":{self.value}" if self.value is not None else "") + f":{self.pos[0]}:{self.pos[1]}"
 
+    def __eq__(self, other: 'Lexem'):
+        return self.token == other.token \
+            and self.value == other.value \
+            and self.pos == other.pos
+
 
 class Rex:
-    def __init__(self, code: str):
+    def __init__(self):
+        self.code: str = str()
+        self.char_pos: int = 0
+        self.position: int = -1
+        self.line: int = 1
+        self.lexem: Lexem | None = None
+
+    def setup(self, code: str):
         self.code: str = code
         self.char_pos: int = 0
         self.position: int = -1
@@ -187,12 +199,11 @@ class Rex:
 
         # OPERATORS
         if char() in ops or char() in ['.', '!']:
-            start_pos = self.pos
             start_char_pos = self.char_pos
             op = char()
 
             self.pos += 1
-            if self.pos < code_len and char() in ops:
+            if self.pos < code_len and (char() in ops or char() == '.'):
                 op += char()
             else:
                 self.pos -= 1
