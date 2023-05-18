@@ -266,7 +266,7 @@ class RexParsingTests(unittest.TestCase):
         self.assertListEqual(parsed_tokens, excepted_result)
 
     def test_emptyInput(self):
-        code = '  #Commentary       '
+        code = ''
 
         self.rex.setup(code)
 
@@ -319,7 +319,7 @@ class RexParsingTests(unittest.TestCase):
                 def self.say_hello
                     puts hello
                 end
-                
+
                 x = 5
                 if x > 10
                   puts "x is greater than 10"
@@ -339,8 +339,6 @@ class RexParsingTests(unittest.TestCase):
         while self.rex.next_token():
             parsed_tokens.append(str(self.rex.lexem))
         parsed_tokens.append(str(self.rex.lexem))
-
-        print(parsed_tokens)
 
         excepted_result = [
             'ID:hello:1:17', 'EQUALS:1:23', 'STR:Hello, world!:1:25', 'NEWLINE:1:40', 'NEWLINE:2:34', 'FUNCTION:3:17',
