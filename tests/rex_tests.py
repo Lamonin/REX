@@ -343,7 +343,7 @@ class RexParsingTests(unittest.TestCase):
         excepted_result = [
             'ID:hello:1:17', 'EQUALS:1:23', 'STR:Hello, world!:1:25', 'NEWLINE:1:40', 'NEWLINE:2:34', 'FUNCTION:3:17',
             'ID:self:3:21', 'DOT:3:25', 'ID:say_hello:3:26', 'NEWLINE:3:35', 'ID:puts:4:21', 'ID:hello:4:26',
-            'NEWLINE:4:31', 'END:5:17', 'NEWLINE:5:20', 'NEWLINE:6:17', 'ID:x:7:17', 'EQUALS:7:19', 'INTEGER:5:7:21',
+            'NEWLINE:4:31', 'END:5:17', 'NEWLINE:5:20', 'NEWLINE:6:1', 'ID:x:7:17', 'EQUALS:7:19', 'INTEGER:5:7:21',
             'NEWLINE:7:22', 'IF:8:17', 'ID:x:8:20', 'GREATER:8:22', 'INTEGER:10:8:24', 'NEWLINE:8:26', 'ID:puts:9:19',
             'STR:x is greater than 10:9:24', 'NEWLINE:9:46', 'ID:elsif:10:17', 'ID:x:10:23', 'GREATER:10:25',
             'INTEGER:5:10:27', 'NEWLINE:10:28', 'ID:puts:11:19',

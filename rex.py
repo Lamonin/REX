@@ -132,7 +132,7 @@ keywords: dict[str, KeyWords] = {
     'nil': Reserved.NIL
 }
 
-num_pattern = re.compile(r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$')
+num_pattern = re.compile(r'^(?!0\d)-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$')
 id_pattern = re.compile(r'^[a-zA-Z_]\w*\??$')
 
 
@@ -265,8 +265,7 @@ class Rex:
                 while self.pos < code_len and char().isdigit():
                     self.pos += 1
 
-            if self.pos < code_len and not char().isspace() and char() not in ops and char() not in [')', ']', '<',
-                                                                                                     '>']:
+            if self.pos < code_len and not char().isspace() and char() not in ops and char() not in [')', ']', '<', '>']:
                 raise Exception(f'Incorrect number token: {self.code[start_pos:self.pos + 1]}')
 
             block: str = self.code[start_pos:self.pos]
@@ -277,7 +276,7 @@ class Rex:
             if matches is not None and len(matches) == 1:
                 self.lexem = Lexem(token_type, block, pos=(self.line, start_char_pos))
             else:
-                raise Exception(f'Incorrect number token:{self.code[start_pos:self.pos]}')
+                raise Exception(f'Incorrect number token:{self.code[start_pos:self.pos + 1]}')
 
         # KEYWORD OR IDENTIFIER
         elif char().isalpha() or char() == ['_']:
