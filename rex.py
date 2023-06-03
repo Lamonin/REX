@@ -18,6 +18,7 @@ class KeyWords(Enum):
     IF = auto()
     ELIF = auto()
     ELSE = auto()
+    THEN = auto()
     IN = auto()
     CASE = auto()
     WHEN = auto()
@@ -67,12 +68,14 @@ class Operators(Enum):
     ASTERISK = auto()
     SLASH = auto()
     MOD = auto()
+    DEGREE = auto()
     DOUBLE_EQUALS = auto()
     PLUS_EQUALS = auto()
     MINUS_EQUALS = auto()
     ASTERISK_EQUALS = auto()
     SLASH_EQUALS = auto()
     MOD_EQUALS = auto()
+    DEGREE_EQUALS = auto()
 
 
 ops: dict[str, Operators | Special] = {
@@ -88,11 +91,13 @@ ops: dict[str, Operators | Special] = {
     '*': Operators.ASTERISK,
     '/': Operators.SLASH,
     '%': Operators.MOD,
+    '**': Operators.DEGREE,
     '+=': Operators.PLUS_EQUALS,
     '-=': Operators.MINUS_EQUALS,
     '*=': Operators.ASTERISK_EQUALS,
     '/=': Operators.SLASH_EQUALS,
     '%=': Operators.MOD_EQUALS,
+    '**=': Operators.DEGREE_EQUALS,
     '..': Special.DOUBLE_DOT,
     ',': Special.COMMA,
     ';': Special.SEMICOLON
@@ -121,6 +126,7 @@ keywords: dict[str, KeyWords] = {
     'if': KeyWords.IF,
     'elif': KeyWords.ELIF,
     'else': KeyWords.ELSE,
+    'then': KeyWords.THEN,
     'in': KeyWords.IN,
     'case': KeyWords.CASE,
     'when': KeyWords.WHEN,
@@ -203,8 +209,9 @@ class Rex:
             op = char()
 
             self.pos += 1
-            if self.pos < code_len and (char() in ops or char() == '.'):
+            while self.pos < code_len and (char() in ops or char() == '.'):
                 op += char()
+                self.pos += 1
             else:
                 self.pos -= 1
 
@@ -276,7 +283,7 @@ class Rex:
             if matches is not None and len(matches) == 1:
                 self.lexem = Lexem(token_type, block, pos=(self.line, start_char_pos))
             else:
-                raise Exception(f'Incorrect number token:{self.code[start_pos:self.pos + 1]}')
+                raise Exception(f'Incorrect number token: {self.code[start_pos:self.pos + 1]}')
 
         # KEYWORD OR IDENTIFIER
         elif char().isalpha() or char() == ['_']:
@@ -290,7 +297,7 @@ class Rex:
 
             matches = id_pattern.findall(block)
             if matches is None or len(matches) != 1:
-                raise Exception(f'Incorrect id token:{self.code[start_pos:self.pos]}')
+                raise Exception(f'Incorrect id token: {self.code[start_pos:self.pos]}')
 
             if block in keywords:
                 self.lexem = Lexem(keywords[block], pos=(self.line, start_char_pos))
