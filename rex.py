@@ -16,7 +16,7 @@ class KeyWords(Enum):
     BREAK = auto()
     # Conditions
     IF = auto()
-    ELIF = auto()
+    ELSIF = auto()
     ELSE = auto()
     THEN = auto()
     IN = auto()
@@ -124,7 +124,7 @@ keywords: dict[str, KeyWords] = {
     'next': KeyWords.NEXT,
     'break': KeyWords.BREAK,
     'if': KeyWords.IF,
-    'elif': KeyWords.ELIF,
+    'elsif': KeyWords.ELSIF,
     'else': KeyWords.ELSE,
     'then': KeyWords.THEN,
     'in': KeyWords.IN,

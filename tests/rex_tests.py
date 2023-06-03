@@ -123,7 +123,7 @@ class RexParsingTests(unittest.TestCase):
                 next\
                 break\
                 if\
-                elif\
+                elsif\
                 else\
                 in\
                 case\
@@ -154,7 +154,7 @@ class RexParsingTests(unittest.TestCase):
             KeyWords.NEXT,
             KeyWords.BREAK,
             KeyWords.IF,
-            KeyWords.ELIF,
+            KeyWords.ELSIF,
             KeyWords.ELSE,
             KeyWords.IN,
             KeyWords.CASE,
@@ -345,7 +345,7 @@ class RexParsingTests(unittest.TestCase):
             'ID:self:3:21', 'DOT:3:25', 'ID:say_hello:3:26', 'NEWLINE:3:35', 'ID:puts:4:21', 'ID:hello:4:26',
             'NEWLINE:4:31', 'END:5:17', 'NEWLINE:5:20', 'NEWLINE:6:1', 'ID:x:7:17', 'EQUALS:7:19', 'INTEGER:5:7:21',
             'NEWLINE:7:22', 'IF:8:17', 'ID:x:8:20', 'GREATER:8:22', 'INTEGER:10:8:24', 'NEWLINE:8:26', 'ID:puts:9:19',
-            'STR:x is greater than 10:9:24', 'NEWLINE:9:46', 'ID:elsif:10:17', 'ID:x:10:23', 'GREATER:10:25',
+            'STR:x is greater than 10:9:24', 'NEWLINE:9:46', 'ELSIF:10:17', 'ID:x:10:23', 'GREATER:10:25',
             'INTEGER:5:10:27', 'NEWLINE:10:28', 'ID:puts:11:19',
             'STR:x is greater than 5 but less than or equal to 10:11:24', 'NEWLINE:11:74', 'ELSE:12:17',
             'NEWLINE:12:21', 'ID:puts:13:19', 'STR:x is less than or equal to 5:13:24', 'NEWLINE:13:54', 'END:14:17',

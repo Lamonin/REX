@@ -78,7 +78,7 @@ x %= 1
 В качестве входных данных рассматривается следующий код на языке Ruby:
 
 ```
-def return end while do for until next break if elif else in case when or and not true false nil
+def return end while do for until next break if elsif else in case when or and not true false nil
 ```
 
 | Входные данные |  Выходные данные  | Ожидаемые данные  |
@@ -93,7 +93,7 @@ def return end while do for until next break if elif else in case when or and no
 |      next      |   KeyWords.NEXT   |   KeyWords.NEXT   |
 |     break      |  KeyWords.BREAK   |  KeyWords.BREAK   |
 |       if       |    KeyWords.IF    |    KeyWords.IF    |
-|      elif      |   KeyWords.ELIF   |   KeyWords.ELIF   |
+|     elsif      |  KeyWords.ELSIF   |  KeyWords.ELSIF   |
 |      else      |   KeyWords.ELSE   |   KeyWords.ELSE   |
 |       in       |    KeyWords.IN    |    KeyWords.IN    |
 |      case      |   KeyWords.CASE   |   KeyWords.CASE   |
@@ -207,7 +207,7 @@ puts my_array.sum
 |                          x = 5                          |                                                                                        ID:\x:7:1<br>EQUALS:7:3<br>INTEGER:5:7:5<br>NEWLINE:7:6                                                                                         |                                                                                        ID:\x:7:1<br>EQUALS:7:3<br>INTEGER:5:7:5<br>NEWLINE:7:6                                                                                         |
 |                        if x > 10                        |                                                                                  IF:8:1<br>ID:\x:8:4<br>GREATER:8:6<br>INTEGER:10:8:8<br>NEWLINE:8:10                                                                                  |                                                                                  IF:8:1<br>ID:\x:8:4<br>GREATER:8:6<br>INTEGER:10:8:8<br>NEWLINE:8:10                                                                                  |
 |               puts "x is greater than 10"               |                                                                                      ID:puts:9:3<br>STR:x is greater than 10:9:8<br>NEWLINE:9:30                                                                                       |                                                                                      ID:puts:9:3<br>STR:x is greater than 10:9:8<br>NEWLINE:9:30                                                                                       |
-|                       elsif x > 5                       |                                                                            ID:elsif:10:1<br>ID:\x:10:7<br>GREATER:10:9<br>INTEGER:5:10:11<br>NEWLINE:10:12                                                                             |                                                                            ID:elsif:10:1<br>ID:\x:10:7<br>GREATER:10:9<br>INTEGER:5:10:11<br>NEWLINE:10:12                                                                             |
+|                       elsif x > 5                       |                                                                              ELSIF:10:1<br>ID:\x:10:7<br>GREATER:10:9<br>INTEGER:5:10:11<br>NEWLINE:10:12                                                                              |                                                                              ELSIF:10:1<br>ID:\x:10:7<br>GREATER:10:9<br>INTEGER:5:10:11<br>NEWLINE:10:12                                                                              |
 | puts "x is greater than 5 but less than or equal to 10" |                                                                       ID:puts:11:3<br>STR:x is greater than 5 but less than or equal to 10:11:8<br>NEWLINE:11:58                                                                       |                                                                       ID:puts:11:3<br>STR:x is greater than 5 but less than or equal to 10:11:8<br>NEWLINE:11:58                                                                       |
 |                          else                           |                                                                                                       ELSE:12:1<br>NEWLINE:12:5                                                                                                        |                                                                                                       ELSE:12:1<br>NEWLINE:12:5                                                                                                        |
 |           puts "x is less than or equal to 5"           |                                                                                 ID:puts:13:3<br>STR:x is less than or equal to 5:13:8<br>NEWLINE:13:38                                                                                 |                                                                                 ID:puts:13:3<br>STR:x is less than or equal to 5:13:8<br>NEWLINE:13:38                                                                                 |
