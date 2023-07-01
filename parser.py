@@ -251,9 +251,13 @@ class NodeIfStatement(Node):
         self.condition = condition
         self.block = block
 
+    def generate(self):
+        return f"if {self.condition.generate()} {{\n{self.block.generate()}\n}}"
+
 
 class NodeElsIfStatement(NodeIfStatement):
-    pass
+    def generate(self):
+        return f"else if ({self.condition.generate()}) {{\n{self.block.generate()}\n}}"
 
 
 class NodeElseStatement(NodeBlock):
@@ -266,6 +270,15 @@ class NodeIfBlock(Node):
         self.elsif = elsif if len(elsif) > 0 else ""
         self.else_block = else_block if else_block is not None else ""
 
+    def generate(self):
+        code = f"{self.if_block.generate()}"
+        for eif in self.elsif:
+            code += f" {eif.generate()}"
+        if self.else_block != "":
+            print(type(self.else_block))
+            code += f"else {{{self.else_block.generate()}\n}}"
+        return code
+
 
 class NodeCycleStatement(Node):
     def __init__(self, condition, block):
@@ -274,7 +287,8 @@ class NodeCycleStatement(Node):
 
 
 class NodeWhileBlock(NodeCycleStatement):
-    pass
+    def generate(self):
+        return f"while ({self.condition.generate()})\n{{{self.block.generate()}\n}}"
 
 
 class NodeUntilBlock(NodeCycleStatement):
@@ -294,11 +308,13 @@ class NodeUnaryOp(Node):
 
 
 class NodeUnaryMinus(NodeUnaryOp):
-    pass
+    def generate(self):
+        return f"-{self.right.generate()}"
 
 
 class NodeUnaryPlus(NodeUnaryOp):
-    pass
+    def generate(self):
+        return f"+{self.right.generate()}"
 
 
 class NodeArgs(Node):
@@ -351,13 +367,18 @@ class NodeArrayCall(Node):
         self.id = id
         self.args = args
 
+    def generate(self):
+        return f"{self.id}{self.args}"
+
 
 class NodeNext(Node):
-    pass
+    def generate(self):
+        return "next\n"
 
 
 class NodeBreak(Node):
-    pass
+    def generate(self):
+        return "break\n"
 
 
 class NodeNot(Node):
@@ -373,11 +394,43 @@ class NodeOr(NodeBinOperator):
     pass
 
 
+class SymTable:
+    def __init__(self):
+        self.table = {
+            "puts": (type(NodeFunc), None)
+        }
+
+    def Add(self, id: str, type, value, pos):
+        if id in self.table:
+            self.error(f"Символ с именем {id} уже существует!", pos)
+        else:
+            self.table[id] = (type, value)
+
+    def Set(self, id, value, pos):
+        if id not in self.table:
+            self.error(f"Попытка присвоить значение {value} для несуществующего символа {id}!", pos)
+        else:
+            self.table[id] = (self.table[id][0], value)
+
+    def Get(self, id, pos):
+        if id not in self.table:
+            self.error(f"Символа с именем {id} не существует!", pos)
+        else:
+            return self.table[id]
+
+    def Exist(self, id):
+        return id in self.table
+
+    def error(self, msg: str, pos):
+        raise Exception(f'Ошибка семантического анализа ({pos[0]}, {pos[1]}): {msg}')
+
+
 class Parser:
     def __init__(self, lexer: Rex):
         self.lexer: Rex = lexer
         self.lexer.next_token()
         self.token = self.lexer.lexem.token
+        self.symtable = SymTable()
 
     def next_token(self):
         self.lexer.next_token()
@@ -529,6 +582,7 @@ class Parser:
             case KeyWords.FUNCTION:
                 self.next_token()
                 id = self.lexer.lexem.value
+                self.symtable.Add(id, type(NodeFunc), None, self.lexer.lexem.pos)
                 self.next_token()
                 self.require(Special.LPAR)
                 self.next_token()
@@ -635,23 +689,34 @@ class Parser:
         match self.token:
             case Operators.EQUALS:
                 self.next_token()
-                return NodeEquals(lhs, self.arg())
+                t = self.arg()
+                if self.symtable.Exist(lhs.id):
+                    self.symtable.Set(lhs.id, t, self.lexer.lexem.pos)
+                else:
+                    self.symtable.Add(lhs.id, type(t), t, self.lexer.lexem.pos)
+                return NodeEquals(lhs, t)
             case Operators.ASTERISK_EQUALS:
+                self.symtable.Get(lhs.id, self.lexer.lexem.pos)
                 self.next_token()
                 return NodeAsteriskEquals(lhs, self.arg())
             case Operators.SLASH_EQUALS:
+                self.symtable.Get(lhs.id, self.lexer.lexem.pos)
                 self.next_token()
                 return NodeSlashEquals(lhs, self.arg())
             case Operators.MOD_EQUALS:
+                self.symtable.Get(lhs.id, self.lexer.lexem.pos)
                 self.next_token()
                 return NodeModEquals(lhs, self.arg())
             case Operators.DEGREE_EQUALS:
+                self.symtable.Get(lhs.id, self.lexer.lexem.pos)
                 self.next_token()
                 return NodeDegreeEquals(lhs, self.arg())
             case Operators.PLUS_EQUALS:
+                self.symtable.Get(lhs.id, self.lexer.lexem.pos)
                 self.next_token()
                 return NodePlusEquals(lhs, self.arg())
             case Operators.MINUS_EQUALS:
+                self.symtable.Get(lhs.id, self.lexer.lexem.pos)
                 self.next_token()
                 return NodeMinusEquals(lhs, self.arg())
 
@@ -676,7 +741,8 @@ class Parser:
         left = self.primary()
         op = self.token
         while op in [Operators.ASTERISK, Operators.SLASH, Operators.MOD, Operators.DEGREE,
-                     Operators.GREATER, Operators.GREATER_EQUAL, Operators.LESS, Operators.LESS_EQUAL]:
+                     Operators.GREATER, Operators.GREATER_EQUAL, Operators.LESS, Operators.LESS_EQUAL,
+                     Operators.DOUBLE_EQUALS, Operators.NOT_EQUALS]:
             self.next_token()
             match op:
                 case Operators.ASTERISK:
@@ -695,6 +761,10 @@ class Parser:
                     left = NodeLess(left, self.term())
                 case Operators.LESS_EQUAL:
                     left = NodeLessEqual(left, self.term())
+                case Operators.DOUBLE_EQUALS:
+                    left = NodeCompEqual(left, self.primary())
+                case Operators.NOT_EQUALS:
+                    left = NodeNotEqual(left, self.primary())
             op = self.token
         return left
 
@@ -750,7 +820,8 @@ class Parser:
             args = self.args()
             self.require(Special.RBR)
             self.next_token()
-            return NodeArrayCall(var, args)
+            self.symtable.Get(var.id, self.lexer.lexem.pos)
+            return NodeArrayCall(var.id, args)
         return var
 
     def rhs(self):
@@ -760,6 +831,7 @@ class Parser:
             args = self.args()
             self.require(Special.RBR)
             self.next_token()
+            self.symtable.Get(var.id, self.lexer.lexem.pos)
             return NodeArrayCall(var.id, args)
         elif self.token == Special.LPAR:
             self.next_token()
