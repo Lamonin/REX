@@ -29,7 +29,8 @@ class Node:
             for el in elements:
                 res += '|   ' * level
                 res += "|+-"
-                res += el.__repr__(level + 1) if (isinstance(el, Node)) else el.__repr__()
+                res += el.__repr__(level + 1)
+            res += "\n"
         else:
             for attr_name in attrs:
                 res += '|   ' * level
@@ -114,32 +115,56 @@ class NodeBinOperator(Node):
 
 class NodePlus(NodeBinOperator):
     pass
+
+
 class NodeMinus(NodeBinOperator):
     pass
+
+
 class NodeAsterisk(NodeBinOperator):
     pass
+
+
 class NodeSlash(NodeBinOperator):
     pass
+
+
 class NodeMod(NodeBinOperator):
     pass
+
+
 class NodeDegree(NodeBinOperator):
     pass
 
 
 class NodeComp(NodeBinOperator):
     pass
+
+
 class NodeGreater(NodeComp):
     pass
+
+
 class NodeGreaterEqual(NodeComp):
     pass
+
+
 class NodeLess(NodeComp):
     pass
+
+
 class NodeLessEqual(NodeComp):
     pass
+
+
 class NodeCompEqual(NodeComp):
     pass
+
+
 class NodeNotEqual(NodeComp):
     pass
+
+
 class NodeDoubleDot(NodeBinOperator):
     pass
 
@@ -150,16 +175,28 @@ class NodeAssign(NodeBinOperator):
 
 class NodeEquals(NodeAssign):
     pass
+
+
 class NodePlusEquals(NodeAssign):
     pass
+
+
 class NodeMinusEquals(NodeAssign):
     pass
+
+
 class NodeAsteriskEquals(NodeAssign):
     pass
+
+
 class NodeSlashEquals(NodeAssign):
     pass
+
+
 class NodeModEquals(NodeAssign):
     pass
+
+
 class NodeDegreeEquals(NodeAssign):
     pass
 
@@ -173,10 +210,21 @@ class NodeIfStatement(Node):
     def __init__(self, condition, block):
         self.condition = condition
         self.block = block
+
+
 class NodeElsIfStatement(NodeIfStatement):
     pass
+
+
 class NodeElseStatement(NodeBlock):
     pass
+
+
+class NodeIfBlock(Node):
+    def __init__(self, if_block, elsif=[], else_block=None):
+        self.if_block = if_block
+        self.elsif = elsif if len(elsif) > 0 else ""
+        self.else_block = else_block if else_block is not None else ""
 
 
 class NodeCycleStatement(Node):
@@ -187,6 +235,8 @@ class NodeCycleStatement(Node):
 
 class NodeWhileBlock(NodeCycleStatement):
     pass
+
+
 class NodeUntilBlock(NodeCycleStatement):
     pass
 
@@ -205,6 +255,8 @@ class NodeUnaryOp(Node):
 
 class NodeUnaryMinus(NodeUnaryOp):
     pass
+
+
 class NodeUnaryPlus(NodeUnaryOp):
     pass
 
@@ -221,6 +273,8 @@ class NodeParams(Node):
 
 class NodeDeclareParams(NodeParams):
     pass
+
+
 class NodeActualParams(NodeParams):
     pass
 
@@ -246,27 +300,34 @@ class NodeReturn(Node):
     def __init__(self, value):
         self.value = value
 
+
 class NodeArray(Node):
     def __init__(self, args):
         self.args = args
+
 
 class NodeArrayCall(Node):
     def __init__(self, id, args):
         self.id = id
         self.args = args
 
+
 class NodeNext(Node):
     pass
 
+
 class NodeBreak(Node):
     pass
+
 
 class NodeNot(Node):
     def __init__(self, expression):
         self.expression = expression
 
+
 class NodeAnd(NodeBinOperator):
     pass
+
 
 class NodeOr(NodeBinOperator):
     pass
@@ -305,7 +366,6 @@ class Parser:
             case KeyWords.WHILE | KeyWords.UNTIL | KeyWords.FOR:
                 return self.cycle_statement()
             case KeyWords.FUNCTION:
-                self.next_token()
                 return self.func_statement()
             case KeyWords.RETURN:
                 self.next_token()
@@ -330,8 +390,45 @@ class Parser:
         self.next_token()
         return NodeBlock(statements)
 
+    def if_block(self) -> Node:
+        condition = self.expression()
+        self.next_token()
+        self.require(KeyWords.THEN)
+        self.next_token()
+        self.require(Special.NEWLINE, Special.SEMICOLON)
+        block = self.block(KeyWords.END, KeyWords.ELSIF, KeyWords.ELSE)
+        return NodeIfStatement(condition, block)
+
+    def elseif_block(self) -> Node:
+        self.next_token()
+        condition = self.expression()
+        self.next_token()
+        self.require(KeyWords.THEN)
+        self.next_token()
+        self.require(Special.NEWLINE, Special.SEMICOLON)
+        block = self.block(KeyWords.END, KeyWords.ELSIF, KeyWords.ELSE)
+        return NodeElsIfStatement(condition, block)
+
+    def else_block(self) -> Node:
+        self.next_token()
+        block = self.block(Special.NEWLINE, Special.SEMICOLON, KeyWords.END)
+        return NodeElseStatement(block)
+
     def if_statement(self) -> Node:
-        pass
+        block = []
+        if_block = self.if_block()
+        block.append(if_block)
+        if self.token in {Special.NEWLINE, Special.SEMICOLON, KeyWords.END}:
+            return if_block
+        else:
+            elsif_block = []
+            else_block = None
+            if self.token == KeyWords.ELSIF:
+                while self.token not in {KeyWords.END, KeyWords.ELSE}:
+                    elsif_block.append(self.elseif_block())
+            else:
+                else_block = self.else_block()
+            return NodeIfBlock(if_block, elsif_block, else_block)
 
     def cycle_statement(self) -> Node:
         match self.token:
@@ -366,16 +463,16 @@ class Parser:
         params = []
         while self.token not in {Special.RPAR}:
             params.append(self.variable())
-            self.require(Special.COMMA)
-            self.next_token()
+            if self.token == Special.COMMA:
+                self.next_token()
         return NodeDeclareParams(params)
 
     def actual_params(self) -> Node:
         params = []
         while self.token not in {Special.RPAR}:
             params.append(self.expression())
-            self.require(Special.COMMA)
-            self.next_token()
+            if self.token == Special.COMMA:
+                self.next_token()
         return NodeActualParams(params)
 
     def func_statement(self) -> Node:
@@ -400,7 +497,7 @@ class Parser:
                 self.next_token()
                 self.require(Special.NEWLINE, Special.SEMICOLON)
                 self.next_token()
-                block = self.block()
+                block = self.block(KeyWords.END, Special.NEWLINE, Special.SEMICOLON)
                 self.require(KeyWords.END)
                 self.next_token()
                 return NodeFuncDec(id, params, block)
