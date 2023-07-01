@@ -225,6 +225,7 @@ class Rex:
         # BRACKETS
         elif char() in brackets:
             self.lexem = Lexem(brackets[char()], pos=(self.line, self.char_pos))
+        # COMMENTARY
         elif char() == '#':
             while self.pos < code_len and char() != '\n':
                 self.pos += 1
@@ -258,6 +259,10 @@ class Rex:
 
             if self.pos < code_len and char() == '.':
                 self.pos += 1
+                if char() == '.':
+                    self.pos -= 2
+                    self.lexem = Lexem(Special.INTEGER, self.code[start_pos:self.pos+1], pos=(self.line, start_char_pos))
+                    return True
                 if self.pos < code_len and char().isdigit():
                     token_type = Special.FLOAT
                     while self.pos < code_len and char().isdigit():

@@ -216,3 +216,64 @@ class Parser:
         self.lexer.next_token()
         self.token = self.lexer.lexem
 
+    def require(self, *args: Enum):
+        for arg in args:
+            if self.token.token == arg:
+                return
+        if len(args) == 1:
+            self.error(f'Ожидается токен {args[0]}, получен токен {self.token.token}!')
+        else:
+            self.error(f'Ожидается один из токенов {args}, получен токен {self.token.token}!')
+
+    def error(self, msg: str):
+        print(f'Ошибка синтаксического анализа ({self.lexer.line}, {self.lexer.pos}): {msg}')
+        sys.exit(1)
+
+    def statement(self) -> Node:
+        match self.token.token:
+            # <if_stmt> | <cycle_stmt> | <func_def> | "RETURN" <args> | <expression>
+            case KeyWords.IF:
+                self.next_token()
+                return self.if_statement()
+            case KeyWords.WHILE | KeyWords.UNTIL | KeyWords.FOR:
+                return self.cycle_statement()
+            case KeyWords.FUNCTION:
+                self.next_token()
+                return self.func_statement()
+            case KeyWords.RETURN:
+                self.next_token()
+                return self.return_statement()
+            case _:
+                return self.expression()
+
+    def if_statement(self) -> Node:
+        pass
+
+    def cycle_statement(self) -> Node:
+        match self.token.token:
+            case KeyWords.FOR:
+                pass
+            case KeyWords.WHILE:
+                pass
+            case KeyWords.UNTIL:
+                pass
+
+    def func_statement(self) -> Node:
+        pass
+
+    def expression(self) -> Node:
+        pass
+
+    def return_statement(self) -> Node:
+        pass
+
+    def parse(self) -> Node:
+        if self.token.token == Special.EOF:
+            self.error("Empty file!")
+        else:
+            statements = []
+            while self.token.token != Special.EOF:
+                statements.append(self.statement())
+                self.require(Special.NEWLINE, Special.SEMICOLON)
+                self.next_token()
+            return NodeProgram(statements)
