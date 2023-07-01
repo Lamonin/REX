@@ -416,6 +416,7 @@ class Parser:
         if_block = self.if_block()
         block.append(if_block)
         if self.token == KeyWords.END:
+            self.next_token()
             return if_block
         else:
             elsif_block = []
@@ -617,28 +618,25 @@ class Parser:
     def parse_expression(self) -> Node:
         left = self.term()
         op = self.token
-        while op in [Operators.PLUS, Operators.MINUS, Operators.GREATER, Operators.GREATER_EQUAL, Operators.LESS, Operators.LESS_EQUAL]:
+        while op in [Operators.PLUS, Operators.MINUS, KeyWords.AND, KeyWords.OR]:
             self.next_token()
             match op:
                 case Operators.PLUS:
                     left = NodePlus(left, self.term())
                 case Operators.MINUS:
                     left = NodeMinus(left, self.term())
-                case Operators.GREATER:
-                    left = NodeGreater(left, self.term())
-                case Operators.GREATER_EQUAL:
-                    left = NodeGreaterEqual(left, self.term())
-                case Operators.LESS:
-                    left = NodeLess(left, self.term())
-                case Operators.LESS_EQUAL:
-                    left = NodeLessEqual(left, self.term())
+                case KeyWords.AND:
+                    left = NodeAnd(left, self.term())
+                case KeyWords.OR:
+                    left = NodeOr(left, self.term())
             op = self.token
         return left
 
     def term(self) -> Node:
         left = self.primary()
         op = self.token
-        while op in [Operators.ASTERISK, Operators.SLASH, Operators.MOD, Operators.DEGREE]:
+        while op in [Operators.ASTERISK, Operators.SLASH, Operators.MOD, Operators.DEGREE,
+                     Operators.GREATER, Operators.GREATER_EQUAL, Operators.LESS, Operators.LESS_EQUAL]:
             self.next_token()
             match op:
                 case Operators.ASTERISK:
@@ -649,6 +647,14 @@ class Parser:
                     left = NodeMod(left, self.primary())
                 case Operators.DEGREE:
                     left = NodeDegree(left, self.primary())
+                case Operators.GREATER:
+                    left = NodeGreater(left, self.term())
+                case Operators.GREATER_EQUAL:
+                    left = NodeGreaterEqual(left, self.term())
+                case Operators.LESS:
+                    left = NodeLess(left, self.term())
+                case Operators.LESS_EQUAL:
+                    left = NodeLessEqual(left, self.term())
             op = self.token
         return left
 
