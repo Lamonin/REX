@@ -21,7 +21,7 @@ class Node:
             for el in elements:
                 res += '|   ' * level
                 res += "|+-"
-                res += el.__repr__(level + 1)
+                res += el.__repr__(level + 1) if (isinstance(el, Node)) else el.__repr__()
         else:
             for attr_name in attrs:
                 res += '|   ' * level
@@ -29,7 +29,7 @@ class Node:
                 if isinstance(attrs[attr_name], Special):
                     res += f"{attr_name}: {attrs[attr_name]}\n"
                 else:
-                    res += f"{attr_name}: {attrs[attr_name].__repr__(level + 1)}"
+                    res += f"{attr_name}: {attrs[attr_name].__repr__(level + 1) if (isinstance(attrs[attr_name], Node)) else attrs[attr_name].__repr__()}"
         return res
 
 
@@ -204,8 +204,13 @@ class NodeFunc(Node):
         self.params = params
 
 
-class NodeFuncDec(NodeFunc):
-    pass
+class NodeFuncDec(Node):
+    def __init__(self, id, params, block):
+        self.id = id
+        self.params = params
+        self.block = block
+
+
 class NodeFuncCall(NodeFunc):
     pass
 
@@ -218,6 +223,7 @@ class NodeReturn(Node):
 class Parser:
     def __init__(self, lexer: Rex):
         self.lexer = lexer
+        self.lexer.next_token()
         self.token = self.lexer.lexem.token
 
     def next_token(self):
@@ -294,8 +300,50 @@ class Parser:
                 self.next_token()
                 return NodeUntilBlock(condition, block)
 
+    def declare_params(self) -> Node:
+        params = []
+        while self.token not in {Special.RPAR}:
+            params.append(self.variable())
+            self.require(Special.COMMA)
+            self.next_token()
+        return NodeDeclareParams(params)
+
+    def actual_params(self) -> Node:
+        params = []
+        while self.token not in {Special.RPAR}:
+            params.append(self.expression())
+            self.require(Special.COMMA)
+            self.next_token()
+        return NodeActualParams(params)
+
     def func_statement(self) -> Node:
-        pass
+        match self.token:
+            case Special.ID:
+                id = self.token
+                self.next_token()
+                self.require(Special.LPAR)
+                self.next_token()
+                params = self.actual_params()
+                self.require(Special.RPAR)
+                self.next_token()
+                return NodeFuncCall(id, params)
+            case KeyWords.FUNCTION:
+                self.next_token()
+                id = self.token
+                self.next_token()
+                self.require(Special.LPAR)
+                self.next_token()
+                params = self.declare_params()
+                self.require(Special.RPAR)
+                self.next_token()
+                self.require(Special.NEWLINE, Special.SEMICOLON)
+                self.next_token()
+                block = self.block()
+                self.require(KeyWords.END)
+                self.next_token()
+                return NodeFuncDec(id, params, block)
+            case _:
+                self.error("Ожидался вызов или объявление функции")
 
     def expression(self) -> Node:
         pass
@@ -342,3 +390,5 @@ class Parser:
                 return NodeBool(lit)
             case _:
                 self.error("Неопознанный тип данных!")
+
+
