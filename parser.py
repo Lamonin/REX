@@ -2,6 +2,16 @@ from rex import *
 import sys
 
 
+asgn_ops = [
+    Operators.EQUALS,
+    Operators.PLUS_EQUALS,
+    Operators.MINUS_EQUALS,
+    Operators.ASTERISK_EQUALS,
+    Operators.SLASH_EQUALS,
+    Operators.MOD_EQUALS,
+    Operators.DEGREE_EQUALS
+]
+
 class Node:
     def __get_class_name(self):
         c = str(self.__class__)
@@ -219,10 +229,35 @@ class NodeReturn(Node):
     def __init__(self, value):
         self.value = value
 
+class NodeArray(Node):
+    def __init__(self, args):
+        self.args = args
+
+class NodeArrayCall(Node):
+    def __init__(self, id, args):
+        self.id = id
+        self.args = args
+
+class NodeNext(Node):
+    pass
+
+class NodeBreak(Node):
+    pass
+
+class NodeNot(Node):
+    def __init__(self, expression):
+        self.expression = expression
+
+class NodeAnd(NodeBinOperator):
+    pass
+
+class NodeOr(NodeBinOperator):
+    pass
+
 
 class Parser:
     def __init__(self, lexer: Rex):
-        self.lexer = lexer
+        self.lexer: Rex = lexer
         self.lexer.next_token()
         self.token = self.lexer.lexem.token
 
@@ -240,10 +275,10 @@ class Parser:
             self.error(f'Ожидается один из токенов {args}, получен токен {self.token}!')
 
     def error(self, msg: str):
-        print(f'Ошибка синтаксического анализа ({self.lexer.line}, {self.lexer.pos}): {msg}')
-        sys.exit(1)
+        raise Exception(f'Ошибка синтаксического анализа ({self.lexer.line}, {self.lexer.char_pos}): {msg}')
+        # sys.exit(1)
 
-    def statement(self) -> Node:
+    def statement(self) -> Node | None:
         match self.token:
             # <if_stmt> | <cycle_stmt> | <func_def> | "RETURN" <args> | <expression>
             case KeyWords.IF:
@@ -257,14 +292,27 @@ class Parser:
             case KeyWords.RETURN:
                 self.next_token()
                 return self.return_statement()
+            case KeyWords.NEXT:
+                self.next_token()
+                return NodeNext()
+            case KeyWords.BREAK:
+                self.next_token()
+                return NodeBreak()
+            case Special.ID:
+                # ASSIGN OP
+                return self.asgn_op()
+            case Special.NEWLINE:
+                return None
             case _:
                 return self.expression()
 
     def block(self, *args: Enum) -> Node:
         statements = []
         while self.token not in args:
-            statements.append(self.statement())
-            self.require(Special.NEWLINE, Special.SEMICOLON)
+            statement = self.statement()
+            if statement is not None:
+                statements.append(statement)
+                self.require(Special.NEWLINE, Special.SEMICOLON)
             self.next_token()
         return NodeBlock(statements)
 
@@ -346,7 +394,19 @@ class Parser:
                 self.error("Ожидался вызов или объявление функции")
 
     def expression(self) -> Node:
-        pass
+        match self.token:
+            case KeyWords.NOT:
+                self.next_token()
+                first_expr = NodeNot(self.expression())
+            case _:
+                first_expr = self.arg()
+
+        if self.token == KeyWords.AND:
+            return NodeAnd(first_expr, self.expression())
+        elif self.token == KeyWords.OR:
+            return NodeOr(first_expr, self.expression())
+
+        return first_expr
 
     def return_statement(self) -> Node:
         pass
@@ -357,10 +417,116 @@ class Parser:
         else:
             statements = []
             while self.token != Special.EOF:
-                statements.append(self.statement())
-                self.require(Special.NEWLINE, Special.SEMICOLON)
+                statement = self.statement()
+                if statement is not None:
+                    statements.append(statement)
+                    if self.token != Special.EOF:
+                        self.require(Special.NEWLINE, Special.SEMICOLON)
                 self.next_token()
+            print(statements)
             return NodeProgram(statements)
+
+    def arg(self):
+        match self.token:
+            case Operators.MINUS:
+                self.next_token()
+                first_arg = NodeUnaryMinus(self.arg())
+            case Operators.PLUS:
+                self.next_token()
+                first_arg = NodeUnaryPlus(self.arg())
+            case _:
+                first_arg = self.primary()
+        if self.token == Special.DOUBLE_DOT:
+            self.next_token()
+            return NodeDoubleDot(first_arg, self.arg())
+        elif self.token in Operators and self.token not in asgn_ops:
+            return self.bin_op(first_arg)
+        return first_arg
+
+    def args(self):
+        args = [self.arg()]
+        while self.token == Special.COMMA:
+            args.append(self.arg())
+        return args
+
+    def primary(self) -> Node:
+        match self.token:
+            # <literal> | <lhs> | <func_call> | "LBR" [args] "RBR"
+            case Special.ID:
+                return self.rhs()
+            case Special.INTEGER | Special.FLOAT | Special.STR | Reserved.TRUE | Reserved.FALSE | Reserved.NIL:
+                return self.literal()
+            case Special.LBR:
+                # Array definition
+                self.next_token()
+                args = self.args()
+                self.require(Special.RBR)
+                self.next_token()
+                return NodeArray(args)
+
+    def asgn_op(self):
+        lhs = self.lhs()
+        match self.token:
+            case Operators.EQUALS:
+                self.next_token()
+                return NodeEquals(lhs, self.arg())
+            case Operators.PLUS_EQUALS:
+                self.next_token()
+                return NodePlusEquals(lhs, self.arg())
+            case Operators.MINUS_EQUALS:
+                self.next_token()
+                return NodeMinusEquals(lhs, self.arg())
+            case Operators.ASTERISK_EQUALS:
+                self.next_token()
+                return NodeAsteriskEquals(lhs, self.arg())
+            case Operators.SLASH_EQUALS:
+                self.next_token()
+                return NodeSlashEquals(lhs, self.arg())
+            case Operators.MOD_EQUALS:
+                self.next_token()
+                return NodeModEquals(lhs, self.arg())
+            case Operators.DEGREE_EQUALS:
+                self.next_token()
+                return NodeDegreeEquals(lhs, self.arg())
+
+    def bin_op(self, first):
+        match self.token:
+            case Operators.PLUS:
+                self.next_token()
+                return NodePlus(first, self.arg())
+            case Operators.MINUS:
+                self.next_token()
+                return NodeMinus(first, self.arg())
+            case Operators.ASTERISK:
+                self.next_token()
+                return NodeAsterisk(first, self.arg())
+            case Operators.SLASH:
+                self.next_token()
+                return NodeSlash(first, self.arg())
+            case Operators.MOD:
+                self.next_token()
+                return NodeMod(first, self.arg())
+            case Operators.DEGREE:
+                self.next_token()
+                return NodeDegree(first, self.arg())
+            case Operators.LESS:
+                self.next_token()
+                return NodeLess(first, self.arg())
+            case Operators.LESS_EQUAL:
+                self.next_token()
+                return NodeLessEqual(first, self.arg())
+            case Operators.GREATER:
+                self.next_token()
+                return NodeGreater(first, self.arg())
+            case Operators.GREATER_EQUAL:
+                self.next_token()
+                return NodeGreaterEqual(first, self.arg())
+            case Operators.DOUBLE_EQUALS:
+                self.next_token()
+                return NodeCompEqual(first, self.arg())
+            case Operators.NOT_EQUALS:
+                self.next_token()
+                return NodeNotEqual(first, self.arg())
 
     def variable(self):
         self.require(Special.ID)
@@ -368,27 +534,56 @@ class Parser:
         self.next_token()
         return NodeVariable(id)
 
-    def variable_list(self):
-        var_list = []
-        while self.token == Special.ID:
-            var_list.append(self.variable())
-            self.require(Special.COMMA)
+    def lhs(self):
+        var = self.variable()
+        if self.token == Special.LBR:
             self.next_token()
+            args = self.args()
+            self.require(Special.RBR)
+            self.next_token()
+            return NodeArrayCall(var, args)
+        return var
+
+    def rhs(self):
+        var = self.variable()
+        if self.token == Special.LBR:
+            self.next_token()
+            args = self.args()
+            self.require(Special.RBR)
+            self.next_token()
+            return NodeArrayCall(var.id, args)
+        elif self.token == Special.LPAR:
+            self.next_token()
+            args = self.args()
+            self.require(Special.RPAR)
+            self.next_token()
+            return NodeFuncCall(var.id, args)
+        return var
+
+    def variable_list(self):
+        var_list = [self.variable()]
+        while self.token == Special.COMMA:
+            var_list.append(self.variable())
         return var_list
 
     def literal(self):
         lit = self.token
-        self.next_token()
         match self.token:
             case Special.INTEGER:
-                return NodeInteger(lit)
+                val = self.lexer.lexem.value
+                self.next_token()
+                return NodeInteger(val)
             case Special.FLOAT:
-                return NodeFloat(lit)
+                val = self.lexer.lexem.value
+                self.next_token()
+                return NodeFloat(val)
             case Special.STR:
-                return NodeString(lit)
+                val = self.lexer.lexem.value
+                self.next_token()
+                return NodeString(val)
             case Reserved.TRUE, Reserved.FALSE:
-                return NodeBool(lit)
+                val = self.lexer.lexem.value
+                self.next_token()
+                return NodeBool(val)
             case _:
                 self.error("Неопознанный тип данных!")
-
-
