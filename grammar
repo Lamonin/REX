@@ -16,15 +16,15 @@
 <stmt>		=	<if_stmt>
 			|	<cycle_stmt>
 			|	<func_def>
+			|   <lhs> <asgn_op> <arg>
 			|	"RETURN" <args>
+		    |	"NEXT"
+			|	"BREAK"
 			|	<expression>.
 
-<expression>=	<lhs> "EQUALS" <arg>
-			|	<expression> "AND" <expression>
+<expression>=   <expression> "AND" <expression>
 			|	<expression> "OR" <expression>
 			|	"NOT" <expression>
-			|	"NEXT"
-			|	"BREAK"
 			|	<arg>.
 
 
@@ -37,8 +37,7 @@
 <lhs>		=	<variable>
 			|	<variable> "LBR" <args> "RBR".
 
-<arg>		=	<lhs> <asgn_op> <arg>
-			|	<arg> "DOUBLE_DOT" <arg>
+<arg>		=	<arg> "DOUBLE_DOT" <arg>
 			|	<arg> <bin_op> <arg>
 			|	"MINUS" <arg> | "PLUS" <arg>
 			|	<primary>.
@@ -46,17 +45,11 @@
 <primary>	=	<literal>
 			|	<lhs>
 			|	<func_call>
-			|	"LBR" [args] "RBR".
+			|	"LBR" [args] "RBR". // Array definition
 
 <if_stmt>	=	"IF" <expression> <then> <block>
 				{"ELSIF" <expression> <then> <block>}
 				["ELSE" <block>]
-				"END".
-
-<case_stmt>	=	"CASE" <expression>
-					"WHEN" <args> <then> <block>
-					{"WHEN" <args> <then> <block>}
-				[else <block>]
 				"END".
 
 <cycle_stmt>=	"WHILE" <expression> <do>
