@@ -83,6 +83,8 @@ class NodeBinOperator(Node):
     def __init__(self, left, right):
         self.left = left
         self.right = right
+
+
 class NodePlus(NodeBinOperator):
     pass
 class NodeMinus(NodeBinOperator):
@@ -95,6 +97,8 @@ class NodeMod(NodeBinOperator):
     pass
 class NodeDegree(NodeBinOperator):
     pass
+
+
 class NodeComp(NodeBinOperator):
     pass
 class NodeGreater(NodeComp):
@@ -115,6 +119,8 @@ class NodeDoubleDot(NodeBinOperator):
 
 class NodeAssign(NodeBinOperator):
     pass
+
+
 class NodeEquals(NodeAssign):
     pass
 class NodePlusEquals(NodeAssign):
@@ -172,7 +178,7 @@ class NodeUnaryOp(Node):
 
 class NodeUnaryMinus(NodeUnaryOp):
     pass
-class NodeUnaryPlus(Node):
+class NodeUnaryPlus(NodeUnaryOp):
     pass
 
 
@@ -196,6 +202,8 @@ class NodeFunc(Node):
     def __init__(self, id, params):
         self.id = id
         self.params = params
+
+
 class NodeFuncDec(NodeFunc):
     pass
 class NodeFuncCall(NodeFunc):
@@ -210,15 +218,15 @@ class NodeReturn(Node):
 class Parser:
     def __init__(self, lexer: Rex):
         self.lexer = lexer
-        self.token = self.lexer.lexem
+        self.token = self.lexer.lexem.token
 
     def next_token(self):
         self.lexer.next_token()
-        self.token = self.lexer.lexem
+        self.token = self.lexer.lexem.token
 
     def require(self, *args: Enum):
         for arg in args:
-            if self.token.token == arg:
+            if self.token == arg:
                 return
         if len(args) == 1:
             self.error(f'Ожидается токен {args[0]}, получен токен {self.token.token}!')
@@ -230,7 +238,7 @@ class Parser:
         sys.exit(1)
 
     def statement(self) -> Node:
-        match self.token.token:
+        match self.token:
             # <if_stmt> | <cycle_stmt> | <func_def> | "RETURN" <args> | <expression>
             case KeyWords.IF:
                 self.next_token()
@@ -250,7 +258,7 @@ class Parser:
         pass
 
     def cycle_statement(self) -> Node:
-        match self.token.token:
+        match self.token:
             case KeyWords.FOR:
                 pass
             case KeyWords.WHILE:
@@ -277,3 +285,24 @@ class Parser:
                 self.require(Special.NEWLINE, Special.SEMICOLON)
                 self.next_token()
             return NodeProgram(statements)
+
+    def variable(self):
+        self.require(Special.ID)
+        id = self.token
+        self.next_token()
+        return NodeVariable(id)
+
+    def literal(self):
+        lit = self.token
+        self.next_token()
+        match self.token:
+            case Special.INTEGER:
+                return NodeInteger(lit)
+            case Special.FLOAT:
+                return NodeFloat(lit)
+            case Special.STR:
+                return NodeString(lit)
+            case Reserved.TRUE, Reserved.FALSE:
+                return NodeBool(lit)
+            case _:
+                self.error("Неопознанный тип данных!")
