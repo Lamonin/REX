@@ -315,6 +315,7 @@ class Parser:
                 statements.append(statement)
                 self.require(Special.NEWLINE, Special.SEMICOLON)
             self.next_token()
+        self.next_token()
         return NodeBlock(statements)
 
     def if_statement(self) -> Node:
@@ -446,6 +447,7 @@ class Parser:
     def args(self):
         args = [self.arg()]
         while self.token == Special.COMMA:
+            self.next_token()
             args.append(self.arg())
         return args
 
@@ -530,9 +532,10 @@ class Parser:
 
     def variable(self):
         self.require(Special.ID)
+        name = self.lexer.lexem.value
         id = self.token
         self.next_token()
-        return NodeVariable(id)
+        return NodeVariable(name)
 
     def lhs(self):
         var = self.variable()
@@ -563,11 +566,11 @@ class Parser:
     def variable_list(self):
         var_list = [self.variable()]
         while self.token == Special.COMMA:
+            self.next_token()
             var_list.append(self.variable())
         return var_list
 
     def literal(self):
-        lit = self.token
         match self.token:
             case Special.INTEGER:
                 val = self.lexer.lexem.value
