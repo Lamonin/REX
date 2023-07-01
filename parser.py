@@ -379,7 +379,7 @@ class Parser:
             case _:
                 return self.expression()
 
-    def block(self, *args: Enum) -> Node:
+    def block(self, *args: Enum, skiplast=True) -> Node:
         statements = []
         while self.token not in args:
             statement = self.statement()
@@ -387,38 +387,35 @@ class Parser:
                 statements.append(statement)
                 self.require(Special.NEWLINE, Special.SEMICOLON)
             self.next_token()
-        self.next_token()
+        if skiplast:
+            self.next_token()
         return NodeBlock(statements)
 
     def if_block(self) -> Node:
         condition = self.expression()
+        self.require(KeyWords.THEN, Special.NEWLINE, Special.SEMICOLON)
         self.next_token()
-        self.require(KeyWords.THEN)
-        self.next_token()
-        self.require(Special.NEWLINE, Special.SEMICOLON)
-        block = self.block(KeyWords.END, KeyWords.ELSIF, KeyWords.ELSE)
+        block = self.block(KeyWords.END, KeyWords.ELSIF, KeyWords.ELSE, skiplast=False)
         return NodeIfStatement(condition, block)
 
     def elseif_block(self) -> Node:
         self.next_token()
         condition = self.expression()
+        self.require(KeyWords.THEN, Special.NEWLINE, Special.SEMICOLON)
         self.next_token()
-        self.require(KeyWords.THEN)
-        self.next_token()
-        self.require(Special.NEWLINE, Special.SEMICOLON)
-        block = self.block(KeyWords.END, KeyWords.ELSIF, KeyWords.ELSE)
+        block = self.block(KeyWords.END, KeyWords.ELSIF, KeyWords.ELSE, skiplast=False)
         return NodeElsIfStatement(condition, block)
 
     def else_block(self) -> Node:
         self.next_token()
-        block = self.block(Special.NEWLINE, Special.SEMICOLON, KeyWords.END)
+        block = self.block(KeyWords.END)
         return NodeElseStatement(block)
 
     def if_statement(self) -> Node:
         block = []
         if_block = self.if_block()
         block.append(if_block)
-        if self.token in {Special.NEWLINE, Special.SEMICOLON, KeyWords.END}:
+        if self.token == KeyWords.END:
             return if_block
         else:
             elsif_block = []
@@ -426,6 +423,8 @@ class Parser:
             if self.token == KeyWords.ELSIF:
                 while self.token not in {KeyWords.END, KeyWords.ELSE}:
                     elsif_block.append(self.elseif_block())
+                if self.token == KeyWords.ELSE:
+                    else_block = self.else_block()
             else:
                 else_block = self.else_block()
             return NodeIfBlock(if_block, elsif_block, else_block)
@@ -497,9 +496,7 @@ class Parser:
                 self.next_token()
                 self.require(Special.NEWLINE, Special.SEMICOLON)
                 self.next_token()
-                block = self.block(KeyWords.END, Special.NEWLINE, Special.SEMICOLON)
-                self.require(KeyWords.END)
-                self.next_token()
+                block = self.block(KeyWords.END)
                 return NodeFuncDec(id, params, block)
             case _:
                 self.error("Ожидался вызов или объявление функции")
@@ -620,13 +617,21 @@ class Parser:
     def parse_expression(self) -> Node:
         left = self.term()
         op = self.token
-        while op in [Operators.PLUS, Operators.MINUS]:
+        while op in [Operators.PLUS, Operators.MINUS, Operators.GREATER, Operators.GREATER_EQUAL, Operators.LESS, Operators.LESS_EQUAL]:
             self.next_token()
             match op:
                 case Operators.PLUS:
                     left = NodePlus(left, self.term())
                 case Operators.MINUS:
                     left = NodeMinus(left, self.term())
+                case Operators.GREATER:
+                    left = NodeGreater(left, self.term())
+                case Operators.GREATER_EQUAL:
+                    left = NodeGreaterEqual(left, self.term())
+                case Operators.LESS:
+                    left = NodeLess(left, self.term())
+                case Operators.LESS_EQUAL:
+                    left = NodeLessEqual(left, self.term())
             op = self.token
         return left
 
@@ -742,8 +747,8 @@ class Parser:
                 val = self.lexer.lexem.value
                 self.next_token()
                 return NodeString(val)
-            case Reserved.TRUE, Reserved.FALSE:
-                val = self.lexer.lexem.value
+            case Reserved.TRUE | Reserved.FALSE:
+                val = self.token == Reserved.TRUE
                 self.next_token()
                 return NodeBool(val)
             case _:
