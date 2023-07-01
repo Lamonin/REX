@@ -229,9 +229,9 @@ class Parser:
             if self.token == arg:
                 return
         if len(args) == 1:
-            self.error(f'Ожидается токен {args[0]}, получен токен {self.token.token}!')
+            self.error(f'Ожидается токен {args[0]}, получен токен {self.token}!')
         else:
-            self.error(f'Ожидается один из токенов {args}, получен токен {self.token.token}!')
+            self.error(f'Ожидается один из токенов {args}, получен токен {self.token}!')
 
     def error(self, msg: str):
         print(f'Ошибка синтаксического анализа ({self.lexer.line}, {self.lexer.pos}): {msg}')
@@ -276,11 +276,11 @@ class Parser:
         pass
 
     def parse(self) -> Node:
-        if self.token.token == Special.EOF:
+        if self.token == Special.EOF:
             self.error("Empty file!")
         else:
             statements = []
-            while self.token.token != Special.EOF:
+            while self.token != Special.EOF:
                 statements.append(self.statement())
                 self.require(Special.NEWLINE, Special.SEMICOLON)
                 self.next_token()
