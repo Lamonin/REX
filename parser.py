@@ -37,15 +37,21 @@ class Node:
                 if isinstance(attrs[attr_name], Special):
                     res += f"{attr_name}: {attrs[attr_name]}"
                 elif isinstance(attrs[attr_name], list):
-                    res += f"{attr_name}:\n"
-                    res += '|   ' * level
-                    res += "[\n"
+                    attr_count = len(attrs[attr_name])
+                    res += f"{attr_name}:"
+                    if attr_count > 0:
+                        res += "\n"
+                        res += '|   ' * level
+                    res += "["
+                    if attr_count > 0:
+                        res += "\n"
                     for el in attrs[attr_name]:
                         res += '|   ' * (level+1)
                         res += el.__repr__(level + 1) if (isinstance(el, Node)) else el.__repr__()
                     res = res.rstrip('\n')
-                    res += "\n"
-                    res += '|   ' * level
+                    if attr_count > 0:
+                        res += "\n"
+                        res += '|   ' * level
                     res += "]"
                 else:
                     res += f"{attr_name}: {attrs[attr_name].__repr__(level + 1) if (isinstance(attrs[attr_name], Node)) else attrs[attr_name].__repr__()}"
@@ -443,17 +449,21 @@ class Parser:
             case Operators.PLUS:
                 self.next_token()
                 first_arg = NodeUnaryPlus(self.arg())
+            case Special.LPAR:
+                self.next_token()
+                first_arg = self.arg()
+                self.require(Special.RPAR)
+                self.next_token()
             case _:
-                first_arg = self.primary()
+                first_arg = self.parse_expression()
         if self.token == Special.DOUBLE_DOT:
             self.next_token()
             return NodeDoubleDot(first_arg, self.arg())
-        elif self.token in Operators and self.token not in asgn_ops:
-            return self.bin_op(first_arg)
         elif self.token in asgn_ops:
             if isinstance(first_arg, NodeVariable) or isinstance(first_arg, NodeArrayCall):
                 return self.asgn_op(first_arg)
             self.error("Ожидалась переменная или массив!")
+
         return first_arg
 
     def args(self):
@@ -477,6 +487,12 @@ class Parser:
                 self.require(Special.RBR)
                 self.next_token()
                 return NodeArray(args)
+            case Special.LPAR:
+                self.next_token()
+                expr = self.parse_expression()
+                self.require(Special.RPAR)
+                self.next_token()
+                return expr
             case _:
                 self.error(f"Был получен токен {self.token}, а ожидался литерал или функция!")
 
@@ -485,12 +501,6 @@ class Parser:
             case Operators.EQUALS:
                 self.next_token()
                 return NodeEquals(lhs, self.arg())
-            case Operators.PLUS_EQUALS:
-                self.next_token()
-                return NodePlusEquals(lhs, self.arg())
-            case Operators.MINUS_EQUALS:
-                self.next_token()
-                return NodeMinusEquals(lhs, self.arg())
             case Operators.ASTERISK_EQUALS:
                 self.next_token()
                 return NodeAsteriskEquals(lhs, self.arg())
@@ -503,15 +513,45 @@ class Parser:
             case Operators.DEGREE_EQUALS:
                 self.next_token()
                 return NodeDegreeEquals(lhs, self.arg())
+            case Operators.PLUS_EQUALS:
+                self.next_token()
+                return NodePlusEquals(lhs, self.arg())
+            case Operators.MINUS_EQUALS:
+                self.next_token()
+                return NodeMinusEquals(lhs, self.arg())
+
+    def parse_expression(self) -> Node:
+        left = self.term()
+        op = self.token
+        while op in [Operators.PLUS, Operators.MINUS]:
+            self.next_token()
+            match op:
+                case Operators.PLUS:
+                    left = NodePlus(left, self.term())
+                case Operators.MINUS:
+                    left = NodeMinus(left, self.term())
+            op = self.token
+        return left
+
+    def term(self) -> Node:
+        left = self.primary()
+        op = self.token
+        while op in [Operators.ASTERISK, Operators.SLASH, Operators.MOD, Operators.DEGREE]:
+            self.next_token()
+            match op:
+                case Operators.ASTERISK:
+                    left = NodeAsterisk(left, self.primary())
+                case Operators.SLASH:
+                    left = NodeSlash(left, self.primary())
+                case Operators.MOD:
+                    left = NodeMod(left, self.primary())
+                case Operators.DEGREE:
+                    left = NodeDegree(left, self.primary())
+            op = self.token
+        return left
 
     def bin_op(self, first):
         match self.token:
-            case Operators.PLUS:
-                self.next_token()
-                return NodePlus(first, self.arg())
-            case Operators.MINUS:
-                self.next_token()
-                return NodeMinus(first, self.arg())
             case Operators.ASTERISK:
                 self.next_token()
                 return NodeAsterisk(first, self.arg())
@@ -524,6 +564,12 @@ class Parser:
             case Operators.DEGREE:
                 self.next_token()
                 return NodeDegree(first, self.arg())
+            case Operators.PLUS:
+                self.next_token()
+                return NodePlus(first, self.arg())
+            case Operators.MINUS:
+                self.next_token()
+                return NodeMinus(first, self.arg())
             case Operators.LESS:
                 self.next_token()
                 return NodeLess(first, self.arg())
@@ -569,6 +615,9 @@ class Parser:
             return NodeArrayCall(var.id, args)
         elif self.token == Special.LPAR:
             self.next_token()
+            if self.token == Special.RPAR:
+                self.next_token()
+                return NodeFuncCall(var.id, [])
             args = self.args()
             self.require(Special.RPAR)
             self.next_token()
