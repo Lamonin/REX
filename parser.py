@@ -423,7 +423,6 @@ class Parser:
                     if self.token != Special.EOF:
                         self.require(Special.NEWLINE, Special.SEMICOLON)
                 self.next_token()
-            print(statements)
             return NodeProgram(statements)
 
     def arg(self):
