@@ -21,10 +21,7 @@ class Node:
 
     def __repr__(self, level=0):
         attrs = self.__dict__
-        if len(attrs) == 1 and isinstance(list(attrs.values())[0], list):
-            is_sequence = True
-        else:
-            is_sequence = False
+        is_sequence = len(attrs) == 1 and isinstance(list(attrs.values())[0], list)
         res = f"{self.__get_class_name()}\n"
         if is_sequence:
             elements = list(attrs.values())[0]
@@ -38,9 +35,21 @@ class Node:
                 res += "|+-"
                 if isinstance(attrs[attr_name], Special):
                     res += f"{attr_name}: {attrs[attr_name]}"
+                elif isinstance(attrs[attr_name], list):
+                    res += f"{attr_name}:\n"
+                    res += '|   ' * level
+                    res += "[\n"
+                    for el in attrs[attr_name]:
+                        res += '|   ' * (level+1)
+                        res += el.__repr__(level + 1) if (isinstance(el, Node)) else el.__repr__()
+                    res = res.rstrip('\n')
+                    res += "\n"
+                    res += '|   ' * level
+                    res += "]"
                 else:
                     res += f"{attr_name}: {attrs[attr_name].__repr__(level + 1) if (isinstance(attrs[attr_name], Node)) else attrs[attr_name].__repr__()}"
-                res += "\n"
+                res = res.rstrip('\n') + "\n"
+
         return res
 
 
