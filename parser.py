@@ -37,9 +37,10 @@ class Node:
                 res += '|   ' * level
                 res += "|+-"
                 if isinstance(attrs[attr_name], Special):
-                    res += f"{attr_name}: {attrs[attr_name]}\n"
+                    res += f"{attr_name}: {attrs[attr_name]}"
                 else:
                     res += f"{attr_name}: {attrs[attr_name].__repr__(level + 1) if (isinstance(attrs[attr_name], Node)) else attrs[attr_name].__repr__()}"
+                res += "\n"
         return res
 
 
