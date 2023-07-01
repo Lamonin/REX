@@ -282,6 +282,8 @@ class Parser:
     def statement(self) -> Node | None:
         match self.token:
             # <if_stmt> | <cycle_stmt> | <func_def> | "RETURN" <args> | <expression>
+            case Special.NEWLINE:
+                return None
             case KeyWords.IF:
                 self.next_token()
                 return self.if_statement()
@@ -299,11 +301,6 @@ class Parser:
             case KeyWords.BREAK:
                 self.next_token()
                 return NodeBreak()
-            case Special.ID:
-                # ASSIGN OP
-                return self.asgn_op()
-            case Special.NEWLINE:
-                return None
             case _:
                 return self.expression()
 
@@ -369,7 +366,7 @@ class Parser:
     def func_statement(self) -> Node:
         match self.token:
             case Special.ID:
-                id = self.token
+                id = self.lexer.lexem.value
                 self.next_token()
                 self.require(Special.LPAR)
                 self.next_token()
@@ -379,7 +376,7 @@ class Parser:
                 return NodeFuncCall(id, params)
             case KeyWords.FUNCTION:
                 self.next_token()
-                id = self.token
+                id = self.lexer.lexem.value
                 self.next_token()
                 self.require(Special.LPAR)
                 self.next_token()
@@ -442,6 +439,10 @@ class Parser:
             return NodeDoubleDot(first_arg, self.arg())
         elif self.token in Operators and self.token not in asgn_ops:
             return self.bin_op(first_arg)
+        elif self.token in asgn_ops:
+            if isinstance(first_arg, NodeVariable) or isinstance(first_arg, NodeArrayCall):
+                return self.asgn_op(first_arg)
+            self.error("Ожидалась переменная или массив!")
         return first_arg
 
     def args(self):
@@ -466,8 +467,7 @@ class Parser:
                 self.next_token()
                 return NodeArray(args)
 
-    def asgn_op(self):
-        lhs = self.lhs()
+    def asgn_op(self, lhs):
         match self.token:
             case Operators.EQUALS:
                 self.next_token()
@@ -533,7 +533,6 @@ class Parser:
     def variable(self):
         self.require(Special.ID)
         name = self.lexer.lexem.value
-        id = self.token
         self.next_token()
         return NodeVariable(name)
 

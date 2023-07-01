@@ -16,7 +16,6 @@
 <stmt>		=	<if_stmt>
 			|	<cycle_stmt>
 			|	<func_def>
-			|   <lhs> <asgn_op> <arg>
 			|	"RETURN" <args>
 		    |	"NEXT"
 			|	"BREAK"
@@ -39,6 +38,7 @@
 
 <arg>		=	<arg> "DOUBLE_DOT" <arg>
 			|	<arg> <bin_op> <arg>
+			|   <lhs> <asgn_op> <arg>
 			|	"MINUS" <arg> | "PLUS" <arg>
 			|	<primary>.
 
