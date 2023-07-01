@@ -254,17 +254,45 @@ class Parser:
             case _:
                 return self.expression()
 
+    def block(self, *args: Enum) -> Node:
+        statements = []
+        while self.token not in args:
+            statements.append(self.statement())
+            self.require(Special.NEWLINE, Special.SEMICOLON)
+            self.next_token()
+        return NodeBlock(statements)
+
     def if_statement(self) -> Node:
         pass
 
     def cycle_statement(self) -> Node:
         match self.token:
             case KeyWords.FOR:
-                pass
+                self.next_token()
+                vars_list = self.variable_list()
+                self.require(KeyWords.IN)
+                self.next_token()
+                iterable = self.expression()
+                self.require(KeyWords.DO, Special.NEWLINE, Special.SEMICOLON)
+                self.next_token()
+                block = self.block(KeyWords.END)
+                return NodeForBlock(vars_list, iterable, block)
             case KeyWords.WHILE:
-                pass
+                self.next_token()
+                condition = self.expression()
+                self.require(Special.NEWLINE, Special.SEMICOLON, KeyWords.DO)
+                self.next_token()
+                block = self.block(KeyWords.END)
+                self.next_token()
+                return NodeWhileBlock(condition, block)
             case KeyWords.UNTIL:
-                pass
+                self.next_token()
+                condition = self.expression()
+                self.require(Special.NEWLINE, Special.SEMICOLON, KeyWords.DO)
+                self.next_token()
+                block = self.block(KeyWords.END)
+                self.next_token()
+                return NodeUntilBlock(condition, block)
 
     def func_statement(self) -> Node:
         pass
@@ -291,6 +319,14 @@ class Parser:
         id = self.token
         self.next_token()
         return NodeVariable(id)
+
+    def variable_list(self):
+        var_list = []
+        while self.token == Special.ID:
+            var_list.append(self.variable())
+            self.require(Special.COMMA)
+            self.next_token()
+        return var_list
 
     def literal(self):
         lit = self.token
