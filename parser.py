@@ -130,7 +130,7 @@ class NodeVariable(Node):
         self.id = id
 
     def generate(self):
-        return f"{id}"
+        return f"{self.id}"
 
 
 class NodeBinOperator(Node):
@@ -214,36 +214,46 @@ class NodeAssign(NodeBinOperator):
 
 
 class NodeEquals(NodeAssign):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} = {self.right.generate()}"
 
 
 class NodePlusEquals(NodeAssign):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} <- {self.left.generate()} + {self.right.generate()}"
 
 
 class NodeMinusEquals(NodeAssign):
-    pass
+    def generate(self):
+        return f"{self.left.generate()}<- {self.left.generate()} - {self.right.generate()}"
 
 
 class NodeAsteriskEquals(NodeAssign):
-    pass
+    def generate(self):
+        return f"{self.left.generate()}<- {self.left.generate()} * {self.right.generate()}"
 
 
 class NodeSlashEquals(NodeAssign):
-    pass
+    def generate(self):
+        return f"{self.left.generate()}<- {self.left.generate()} / {self.right.generate()}"
 
 
 class NodeModEquals(NodeAssign):
-    pass
+    def generate(self):
+        return f"{self.left.generate()}<- {self.left.generate()} % {self.right.generate()}"
 
 
 class NodeDegreeEquals(NodeAssign):
-    pass
+    def generate(self):
+        return f"{self.left.generate()}<- {self.left.generate()} ** {self.right.generate()}"
 
 
 class NodePrimary(Node):
     def __init__(self, value):
         self.value = value
+
+    def generate(self):
+        return self.value.generate()
 
 
 class NodeIfStatement(Node):
@@ -300,6 +310,9 @@ class NodeForBlock(Node):
         self.iter = it
         self.iterable = iterable
         self.block = block
+
+    def generate(self):
+        return f"for ({self.iter.generate()} in {self.iterable.generate})" + "{\n" + f"{self.block.generate()}" + "}"
 
 
 class NodeUnaryOp(Node):
@@ -871,3 +884,4 @@ class Parser:
                 return NodeBool(val)
             case _:
                 self.error("Неопознанный тип данных!")
+
