@@ -12,6 +12,7 @@ asgn_ops = [
     Operators.DEGREE_EQUALS
 ]
 
+
 class Node:
     def __get_class_name(self):
         c = str(self.__class__)
@@ -285,8 +286,7 @@ class Parser:
             self.error(f'Ожидается один из токенов {args}, получен токен {self.token}!')
 
     def error(self, msg: str):
-        raise Exception(f'Ошибка синтаксического анализа ({self.lexer.line}, {self.lexer.char_pos}): {msg}')
-        # sys.exit(1)
+        raise Exception(f'Ошибка синтаксического анализа ({self.lexer.lexem.pos[0]}, {self.lexer.lexem.pos[1]}): {msg}')
 
     def statement(self) -> Node | None:
         match self.token:
@@ -417,7 +417,9 @@ class Parser:
         return first_expr
 
     def return_statement(self) -> Node:
-        pass
+        if self.token in [Special.NEWLINE, Special.SEMICOLON]:
+            return NodeReturn([])
+        return NodeReturn(self.args())
 
     def parse(self) -> Node:
         if self.token == Special.EOF:
@@ -475,6 +477,8 @@ class Parser:
                 self.require(Special.RBR)
                 self.next_token()
                 return NodeArray(args)
+            case _:
+                self.error(f"Был получен токен {self.token}, а ожидался литерал или функция!")
 
     def asgn_op(self, lhs):
         match self.token:
