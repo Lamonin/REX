@@ -1,5 +1,4 @@
 from rex import *
-import sys
 
 
 asgn_ops = [
@@ -60,30 +59,54 @@ class Node:
 
         return res
 
+    def generate(self):
+        pass
+
 
 class NodeProgram(Node):
     def __init__(self, child):
         self.child = child
+
+    def generate(self):
+        code = ""
+        for i in self.child:
+            code += f"{i.generate()}"
+        return code
 
 
 class NodeBlock(Node):
     def __init__(self, children):
         self.children = children
 
+    def generate(self):
+        code = ""
+        for i in self.children:
+            code += f"{i.generate()}"
+        return code
+
 
 class NodeNewLine(Node):
     def __init__(self, line):
         self.line = line
+
+    def generate(self):
+        return "\n"
 
 
 class NodeStatement(Node):
     def __init__(self, statement):
         self.statement = statement
 
+    def generate(self):
+        return self.statement.generate()
+
 
 class NodeLiteral(Node):
     def __init__(self, value):
         self.value = value
+
+    def generate(self):
+        return str(self.value)
 
 
 class NodeBool(NodeLiteral):
@@ -106,6 +129,9 @@ class NodeVariable(Node):
     def __init__(self, id):
         self.id = id
 
+    def generate(self):
+        return f"{id}"
+
 
 class NodeBinOperator(Node):
     def __init__(self, left, right):
@@ -114,27 +140,34 @@ class NodeBinOperator(Node):
 
 
 class NodePlus(NodeBinOperator):
-    pass
+
+    def generate(self):
+        return f"{self.left.generate()} + {self.right.generate()}"
 
 
 class NodeMinus(NodeBinOperator):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} - {self.right.generate()}"
 
 
 class NodeAsterisk(NodeBinOperator):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} * {self.right.generate()}"
 
 
 class NodeSlash(NodeBinOperator):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} / {self.right.generate()}"
 
 
 class NodeMod(NodeBinOperator):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} * {self.right.generate()}"
 
 
 class NodeDegree(NodeBinOperator):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} * {self.right.generate()}"
 
 
 class NodeComp(NodeBinOperator):
@@ -142,31 +175,38 @@ class NodeComp(NodeBinOperator):
 
 
 class NodeGreater(NodeComp):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} > {self.right.generate()}"
 
 
 class NodeGreaterEqual(NodeComp):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} >= {self.right.generate()}"
 
 
 class NodeLess(NodeComp):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} < {self.right.generate()}"
 
 
 class NodeLessEqual(NodeComp):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} <= {self.right.generate()}"
 
 
 class NodeCompEqual(NodeComp):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} == {self.right.generate()}"
 
 
 class NodeNotEqual(NodeComp):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} != {self.right.generate()}"
 
 
 class NodeDoubleDot(NodeBinOperator):
-    pass
+    def generate(self):
+        return f"{self.left.generate()}:{self.right.generate()}"
 
 
 class NodeAssign(NodeBinOperator):
