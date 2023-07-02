@@ -682,8 +682,7 @@ class Parser:
                 return self.rhs()
             case Special.INTEGER | Special.FLOAT | Special.STR | Reserved.TRUE | Reserved.FALSE | Reserved.NIL:
                 return self.literal()
-            case Special.LBR:
-                # Array definition
+            case Special.LBR: # Array definition
                 self.next_token()
                 args = self.args()
                 self.require(Special.RBR)
@@ -782,43 +781,36 @@ class Parser:
         return left
 
     def bin_op(self, first):
+        node: Node | None = None
         match self.token:
             case Operators.ASTERISK:
-                self.next_token()
-                return NodeAsterisk(first, self.arg())
+                node = NodeAsterisk(first, self.arg())
             case Operators.SLASH:
-                self.next_token()
-                return NodeSlash(first, self.arg())
+                node = NodeSlash(first, self.arg())
             case Operators.MOD:
-                self.next_token()
-                return NodeMod(first, self.arg())
+                node = NodeMod(first, self.arg())
             case Operators.DEGREE:
-                self.next_token()
-                return NodeDegree(first, self.arg())
+                node = NodeDegree(first, self.arg())
             case Operators.PLUS:
-                self.next_token()
-                return NodePlus(first, self.arg())
+                node = NodePlus(first, self.arg())
             case Operators.MINUS:
-                self.next_token()
-                return NodeMinus(first, self.arg())
+                node = NodeMinus(first, self.arg())
             case Operators.LESS:
-                self.next_token()
-                return NodeLess(first, self.arg())
+                node = NodeLess(first, self.arg())
             case Operators.LESS_EQUAL:
-                self.next_token()
-                return NodeLessEqual(first, self.arg())
+                node = NodeLessEqual(first, self.arg())
             case Operators.GREATER:
-                self.next_token()
-                return NodeGreater(first, self.arg())
+                node = NodeGreater(first, self.arg())
             case Operators.GREATER_EQUAL:
-                self.next_token()
-                return NodeGreaterEqual(first, self.arg())
+                node = NodeGreaterEqual(first, self.arg())
             case Operators.DOUBLE_EQUALS:
-                self.next_token()
-                return NodeCompEqual(first, self.arg())
+                node = NodeCompEqual(first, self.arg())
             case Operators.NOT_EQUALS:
-                self.next_token()
-                return NodeNotEqual(first, self.arg())
+                node = NodeNotEqual(first, self.arg())
+            case _:
+                self.error(f"Был получен токен {self.token}, а ожидался бинарный оператор!")
+        self.next_token()
+        return node
 
     def variable(self):
         self.require(Special.ID)
@@ -865,23 +857,17 @@ class Parser:
         return var_list
 
     def literal(self):
+        node: Node | None = None
         match self.token:
             case Special.INTEGER:
-                val = self.lexer.lexem.value
-                self.next_token()
-                return NodeInteger(val)
+                node = NodeInteger(self.lexer.lexem.value)
             case Special.FLOAT:
-                val = self.lexer.lexem.value
-                self.next_token()
-                return NodeFloat(val)
+                node = NodeFloat(self.lexer.lexem.value)
             case Special.STR:
-                val = self.lexer.lexem.value
-                self.next_token()
-                return NodeString(val)
+                node = NodeString(self.lexer.lexem.value)
             case Reserved.TRUE | Reserved.FALSE:
-                val = self.token == Reserved.TRUE
-                self.next_token()
-                return NodeBool(val)
+                node = NodeBool(self.token == Reserved.TRUE)
             case _:
                 self.error("Неопознанный тип данных!")
-
+        self.next_token()
+        return node
