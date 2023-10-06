@@ -1,7 +1,7 @@
 from rex import Rex
 
 
-f = open('sample_2.rb')
+f = open('samples/sample_2.rb')
 
 
 rex = Rex()
