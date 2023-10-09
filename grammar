@@ -39,7 +39,7 @@
 
 <arg>		=	<arg> "DOUBLE_DOT" <arg>
 			|	<arg> <bin_op> <arg>
-			|	<lhs> <asgn_op> <arg>
+			|	<lhs> <asgn_op> <expression>
 			|	"MINUS" <arg> | "PLUS" <arg>
 			|	"LPAR" <arg> "RPAR"
 			|	<primary>.

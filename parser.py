@@ -701,7 +701,8 @@ class Parser:
         match self.token:
             case Operators.EQUALS:
                 self.next_token()
-                t = self.arg()
+                # t = self.arg()
+                t = self.parse_expression()
                 if self.symtable.Exist(lhs.id):
                     self.symtable.Set(lhs.id, t, self.lexer.lexem.pos)
                 else:
