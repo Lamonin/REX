@@ -138,8 +138,23 @@ keywords: dict[str, KeyWords] = {
     'nil': Reserved.NIL
 }
 
-num_pattern = re.compile(r'^(?!0\d)-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$')
-id_pattern = re.compile(r'^[a-zA-Z_]\w*\??$')
+
+class Transliterator:
+    def __init__(self):
+        self.num_pattern = re.compile(r'^(?!0\d)-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$')
+        self.id_pattern = re.compile(r'^[a-zA-Z_]\w*\??$')
+
+    def is_num(self, n: str) -> bool:
+        matches = self.num_pattern.findall(n)
+        return matches is not None and len(matches) == 1
+
+    def is_id(self, s: str) -> bool:
+        matches = self.id_pattern.findall(s)
+        return matches is not None and len(matches) == 1
+
+    def is_quote(self, c):
+        return c == '"' or c == "'"
+
 
 
 class Lexem:
@@ -165,6 +180,7 @@ class Rex:
         self.position: int = -1
         self.line: int = 1
         self.lexem: Lexem | None = None
+        self.trnslt = Transliterator()
 
     def setup(self, code: str):
         self.code: str = code
@@ -233,7 +249,7 @@ class Rex:
                 self.pos -= 1
             return self.next_token()
         # STRINGS
-        elif char() == '"' or char() == "'":
+        elif self.trnslt.is_quote(char()):
             quote = char()
             start_pos = self.pos + 1
             start_char_pos = self.char_pos
@@ -261,7 +277,8 @@ class Rex:
                 self.pos += 1
                 if char() == '.':
                     self.pos -= 2
-                    self.lexem = Lexem(Special.INTEGER, self.code[start_pos:self.pos+1], pos=(self.line, start_char_pos))
+                    self.lexem = Lexem(Special.INTEGER, self.code[start_pos:self.pos + 1],
+                                       pos=(self.line, start_char_pos))
                     return True
                 if self.pos < code_len and char().isdigit():
                     token_type = Special.FLOAT
@@ -277,16 +294,15 @@ class Rex:
                 while self.pos < code_len and char().isdigit():
                     self.pos += 1
 
-            if self.pos < code_len and not char().isspace() and char() not in ops and char() not in [')', ']', '<', '>']:
+            if self.pos < code_len and not char().isspace() and char() not in ops and char() not in [')', ']', '<',
+                                                                                                     '>']:
                 raise Exception(f'Incorrect number token: {self.code[start_pos:self.pos + 1]}')
 
-            block: str = self.code[start_pos:self.pos]
-            matches = num_pattern.findall(block)
-
+            potential_num: str = self.code[start_pos:self.pos]
             self.pos -= 1
 
-            if matches is not None and len(matches) == 1:
-                self.lexem = Lexem(token_type, block, pos=(self.line, start_char_pos))
+            if self.trnslt.is_num(potential_num):
+                self.lexem = Lexem(token_type, potential_num, pos=(self.line, start_char_pos))
             else:
                 raise Exception(f'Incorrect number token: {self.code[start_pos:self.pos + 1]}')
 
@@ -298,16 +314,15 @@ class Rex:
             while self.pos < code_len and (char().isalnum() or char() in ['_', '?']):
                 self.pos += 1
 
-            block: str = self.code[start_pos:self.pos]
+            potential_id: str = self.code[start_pos:self.pos]
 
-            matches = id_pattern.findall(block)
-            if matches is None or len(matches) != 1:
+            if not self.trnslt.is_id(potential_id):
                 raise Exception(f'Incorrect id token: {self.code[start_pos:self.pos]}')
 
-            if block in keywords:
-                self.lexem = Lexem(keywords[block], pos=(self.line, start_char_pos))
+            if potential_id in keywords:
+                self.lexem = Lexem(keywords[potential_id], pos=(self.line, start_char_pos))
             else:
-                self.lexem = Lexem(Special.ID, block, pos=(self.line, start_char_pos))
+                self.lexem = Lexem(Special.ID, potential_id, pos=(self.line, start_char_pos))
             self.pos -= 1
         else:
             raise Exception('Incorrect token: ' + char())
