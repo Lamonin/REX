@@ -1,6 +1,5 @@
 from rex import *
 
-
 asgn_ops = [
     Operators.EQUALS,
     Operators.PLUS_EQUALS,
@@ -46,7 +45,7 @@ class Node:
                     if attr_count > 0:
                         res += "\n"
                     for el in attrs[attr_name]:
-                        res += '|   ' * (level+1)
+                        res += '|   ' * (level + 1)
                         res += el.__repr__(level + 1) if (isinstance(el, Node)) else el.__repr__()
                     res = res.rstrip('\n')
                     if attr_count > 0:
@@ -78,10 +77,13 @@ class NodeBlock(Node):
     def __init__(self, children):
         self.children = children
 
-    def generate(self):
+    def generate(self, indent=0):
         code = ""
+        indent_str = ""
+        for i in range(indent):
+            indent_str += "\t"
         for i in self.children:
-            code += f"{i.generate()}"
+            code += f"{indent_str}{i.generate()}"
         return code
 
 
@@ -131,6 +133,14 @@ class NodeVariable(Node):
 
     def generate(self):
         return f"{self.id}"
+
+
+class NodePar(Node):
+    def __init__(self, expr):
+        self.expr = expr
+
+    def generate(self):
+        return f"({self.expr.generate()})"
 
 
 class NodeBinOperator(Node):
@@ -339,13 +349,18 @@ class NodeParams(Node):
     def __init__(self, params):
         self.params = params
 
+    def generate(self):
+        return ", ".join([p.generate() for p in self.params])
+
 
 class NodeDeclareParams(NodeParams):
-    pass
+    def generate(self):
+        return ", ".join([p.generate() for p in self.params])
 
 
 class NodeActualParams(NodeParams):
-    pass
+    def generate(self):
+        return ", ".join([p.generate() for p in self.params])
 
 
 class NodeFunc(Node):
@@ -360,9 +375,13 @@ class NodeFuncDec(Node):
         self.params = params
         self.block = block
 
+    def generate(self):
+        return f"def {self.id}({self.params.generate()})\n{self.block.generate(indent=1)}end\n"
+
 
 class NodeFuncCall(NodeFunc):
-    pass
+    def generate(self):
+        return f"{self.id}({self.params.generate()})\n"
 
 
 class NodeReturn(Node):
@@ -682,7 +701,7 @@ class Parser:
                 return self.rhs()
             case Special.INTEGER | Special.FLOAT | Special.STR | Reserved.TRUE | Reserved.FALSE | Reserved.NIL:
                 return self.literal()
-            case Special.LBR: # Array definition
+            case Special.LBR:  # Array definition
                 self.next_token()
                 args = self.args()
                 self.require(Special.RBR)
@@ -693,7 +712,7 @@ class Parser:
                 expr = self.parse_expression()
                 self.require(Special.RPAR)
                 self.next_token()
-                return expr
+                return NodePar(expr)
             case _:
                 self.error(f"Был получен токен {self.token}, а ожидался литерал или функция!")
 
@@ -843,11 +862,11 @@ class Parser:
             self.next_token()
             if self.token == Special.RPAR:
                 self.next_token()
-                return NodeFuncCall(var.id, [])
+                return NodeFuncCall(var.id, NodeActualParams(list()))
             args = self.args()
             self.require(Special.RPAR)
             self.next_token()
-            return NodeFuncCall(var.id, args)
+            return NodeFuncCall(var.id, NodeActualParams(args))
         return var
 
     def variable_list(self):
