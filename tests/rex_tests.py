@@ -1,5 +1,6 @@
 import unittest
 from rex import *
+from symbols import *
 
 
 class RexParsingTests(unittest.TestCase):

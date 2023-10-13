@@ -1,4 +1,5 @@
-from rex import *
+from rex import Rex
+from symbols import *
 
 asgn_ops = [
     Operators.EQUALS,
@@ -177,7 +178,7 @@ class NodeMod(NodeBinOperator):
 
 class NodeDegree(NodeBinOperator):
     def generate(self):
-        return f"{self.left.generate()} * {self.right.generate()}"
+        return f"{self.left.generate()} ** {self.right.generate()}"
 
 
 class NodeComp(NodeBinOperator):
@@ -344,23 +345,24 @@ class NodeArgs(Node):
     def __init__(self, arguments):
         self.arguments = arguments
 
+    def generate(self):
+        return f"{', '.join([a.generate() for a in self.arguments])}"
+
 
 class NodeParams(Node):
     def __init__(self, params):
         self.params = params
 
     def generate(self):
-        return ", ".join([p.generate() for p in self.params])
+        return ", ".join([str(p) for p in self.params])
 
 
 class NodeDeclareParams(NodeParams):
-    def generate(self):
-        return ", ".join([p.generate() for p in self.params])
+    pass
 
 
 class NodeActualParams(NodeParams):
-    def generate(self):
-        return ", ".join([p.generate() for p in self.params])
+    pass
 
 
 class NodeFunc(Node):
@@ -388,11 +390,16 @@ class NodeReturn(Node):
     def __init__(self, value):
         self.value = value
 
+    def generate(self):
+        return f"return {self.value.generate()}\n"
+
 
 class NodeArray(Node):
     def __init__(self, args):
         self.args = args
 
+    def generate(self):
+        return str(self.args)
 
 class NodeArrayCall(Node):
     def __init__(self, id, args):
@@ -417,13 +424,18 @@ class NodeNot(Node):
     def __init__(self, expression):
         self.expression = expression
 
+    def generate(self):
+        return f"!{self.expression.generate()}"
+
 
 class NodeAnd(NodeBinOperator):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} & {self.right.generate()}"
 
 
 class NodeOr(NodeBinOperator):
-    pass
+    def generate(self):
+        return f"{self.left.generate()} | {self.right.generate()}"
 
 
 class SymTable:
@@ -645,7 +657,7 @@ class Parser:
 
     def return_statement(self) -> Node:
         if self.token in [Special.NEWLINE, Special.SEMICOLON]:
-            return NodeReturn([])
+            return NodeReturn("")
         return NodeReturn(self.args())
 
     def parse(self) -> Node:
@@ -692,7 +704,7 @@ class Parser:
         while self.token == Special.COMMA:
             self.next_token()
             args.append(self.arg())
-        return args
+        return NodeArgs(args)
 
     def primary(self) -> Node:
         match self.token:
@@ -720,7 +732,6 @@ class Parser:
         match self.token:
             case Operators.EQUALS:
                 self.next_token()
-                # t = self.arg()
                 t = self.parse_expression()
                 if self.symtable.Exist(lhs.id):
                     self.symtable.Set(lhs.id, t, self.lexer.lexem.pos)
