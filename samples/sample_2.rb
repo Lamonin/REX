@@ -1,7 +1,2 @@
-def amongus(a, b)
-    puts(10)
-    puts(10)
-    puts(10)
-end
-
-amongus()
+a = true and false
+b = [1,2,3,4,5.0]

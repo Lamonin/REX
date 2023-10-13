@@ -1,38 +1,22 @@
-from rex import Rex
-from symbols import *
-
-asgn_ops = [
-    Operators.EQUALS,
-    Operators.PLUS_EQUALS,
-    Operators.MINUS_EQUALS,
-    Operators.ASTERISK_EQUALS,
-    Operators.SLASH_EQUALS,
-    Operators.MOD_EQUALS,
-    Operators.DEGREE_EQUALS
-]
+from rex.lexer import Rex
+from rex.symbols import *
 
 
 class Node:
-    def __get_class_name(self):
-        c = str(self.__class__)
-        pos_1 = c.find('.') + 1
-        pos_2 = c.find("'", pos_1)
-        return f"{c[pos_1:pos_2]}"
-
     def __repr__(self, level=0):
         attrs = self.__dict__
         is_sequence = len(attrs) == 1 and isinstance(list(attrs.values())[0], list)
-        res = f"{self.__get_class_name()}\n"
+        res = f"{self.__class__.__name__}\n"
         if is_sequence:
             elements = list(attrs.values())[0]
             for el in elements:
-                res += '|   ' * level
+                res += '|\t' * level
                 res += "|+-"
                 res += el.__repr__(level + 1)
             res += "\n"
         else:
             for attr_name in attrs:
-                res += '|   ' * level
+                res += '|\t' * level
                 res += "|+-"
                 if isinstance(attrs[attr_name], Special):
                     res += f"{attr_name}: {attrs[attr_name]}"
@@ -41,17 +25,17 @@ class Node:
                     res += f"{attr_name}:"
                     if attr_count > 0:
                         res += "\n"
-                        res += '|   ' * level
+                        res += '|\t' * level
                     res += "["
                     if attr_count > 0:
                         res += "\n"
                     for el in attrs[attr_name]:
-                        res += '|   ' * (level + 1)
+                        res += '|\t' * (level + 1)
                         res += el.__repr__(level + 1) if (isinstance(el, Node)) else el.__repr__()
                     res = res.rstrip('\n')
                     if attr_count > 0:
                         res += "\n"
-                        res += '|   ' * level
+                        res += '|\t' * level
                     res += "]"
                 else:
                     res += f"{attr_name}: {attrs[attr_name].__repr__(level + 1) if (isinstance(attrs[attr_name], Node)) else attrs[attr_name].__repr__()}"

@@ -1,6 +1,6 @@
 import re
 
-from symbols import *
+from rex.symbols import *
 
 
 class Transliterator:
