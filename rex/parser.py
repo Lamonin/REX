@@ -31,7 +31,7 @@ class Parser:
         match self.token:
             # <if_stmt> | <cycle_stmt> | <func_def> | "RETURN" <args> | <expression>
             case Special.NEWLINE:
-                return None
+                return NodeNewLine()
             case KeyWords.IF:
                 self.next_token()
                 return self.if_statement()
@@ -157,6 +157,8 @@ class Parser:
                 params = self.actual_params()
                 self.require(Special.RPAR)
                 self.next_token()
+                if not self.symtable.exist(id):
+                    self.error("Попытка вызвать функцию, которая не объявлена!")
                 return NodeFuncCall(id, params)
             case KeyWords.FUNCTION:
                 self.next_token()
@@ -414,10 +416,14 @@ class Parser:
             self.next_token()
             if self.token == Special.RPAR:
                 self.next_token()
+                if not self.symtable.exist(var.id):
+                    self.error("Попытка вызвать функцию, которая не объявлена!")
                 return NodeFuncCall(var.id, NodeActualParams(list()))
             args = self.args()
             self.require(Special.RPAR)
             self.next_token()
+            if not self.symtable.exist(var.id):
+                self.error("Попытка вызвать функцию, которая не объявлена!")
             return NodeFuncCall(var.id, NodeActualParams(args))
         return var
 

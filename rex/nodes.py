@@ -53,7 +53,7 @@ class NodeProgram(Node):
     def generate(self):
         code = ""
         for i in self.child:
-            code += f"{i.generate()}"
+            code += f"{i.generate()}\n"
         return code
 
 
@@ -67,16 +67,13 @@ class NodeBlock(Node):
         for i in range(indent):
             indent_str += "\t"
         for i in self.children:
-            code += f"{indent_str}{i.generate()}"
+            code += f"{indent_str}{i.generate()}\n"
         return code
 
 
 class NodeNewLine(Node):
-    def __init__(self, line):
-        self.line = line
-
     def generate(self):
-        return "\n"
+        return ""
 
 
 class NodeStatement(Node):
@@ -84,7 +81,7 @@ class NodeStatement(Node):
         self.statement = statement
 
     def generate(self):
-        return self.statement.generate()
+        return self.statement.generate() + "\n"
 
 
 class NodeLiteral(Node):
@@ -364,7 +361,7 @@ class NodeFuncDec(Node):
         self.block = block
 
     def generate(self):
-        return f"def {self.id}({self.params.generate()})\n{self.block.generate(indent=1)}end\n"
+        return f"def {self.id}({self.params.generate()})\n{self.block.generate(indent=1)}end"
 
 
 class NodeFuncCall(NodeFunc):
@@ -377,7 +374,7 @@ class NodeReturn(Node):
         self.value = value
 
     def generate(self):
-        return f"return {self.value.generate()}\n"
+        return f"return {self.value.generate()}"
 
 
 class NodeArray(Node):
