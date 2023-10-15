@@ -66,8 +66,11 @@ class NodeBlock(Node):
         indent_str = ""
         for i in range(indent):
             indent_str += "\t"
-        for i in self.children:
-            code += f"{indent_str}{i.generate()}\n"
+        if isinstance(self.children, list):
+            for i in self.children:
+                code += f"{indent_str}{i.generate()}\n"
+        else:
+            code += f"{self.children.generate(indent)}"
         return code
 
 
@@ -105,7 +108,8 @@ class NodeFloat(NodeLiteral):
 
 
 class NodeString(NodeLiteral):
-    pass
+    def generate(self):
+        return f'"{self.value}"'
 
 
 class NodeVariable(Node):
@@ -113,7 +117,7 @@ class NodeVariable(Node):
         self.id = id
 
     def generate(self):
-        return f"{self.id}"
+        return str(self.id)
 
 
 class NodePar(Node):
@@ -131,7 +135,6 @@ class NodeBinOperator(Node):
 
 
 class NodePlus(NodeBinOperator):
-
     def generate(self):
         return f"{self.left.generate()} + {self.right.generate()}"
 
@@ -161,36 +164,32 @@ class NodeDegree(NodeBinOperator):
         return f"{self.left.generate()} ** {self.right.generate()}"
 
 
-class NodeComp(NodeBinOperator):
-    pass
-
-
-class NodeGreater(NodeComp):
+class NodeGreater(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()} > {self.right.generate()}"
 
 
-class NodeGreaterEqual(NodeComp):
+class NodeGreaterEqual(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()} >= {self.right.generate()}"
 
 
-class NodeLess(NodeComp):
+class NodeLess(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()} < {self.right.generate()}"
 
 
-class NodeLessEqual(NodeComp):
+class NodeLessEqual(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()} <= {self.right.generate()}"
 
 
-class NodeCompEqual(NodeComp):
+class NodeCompEqual(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()} == {self.right.generate()}"
 
 
-class NodeNotEqual(NodeComp):
+class NodeNotEqual(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()} != {self.right.generate()}"
 
@@ -200,41 +199,37 @@ class NodeDoubleDot(NodeBinOperator):
         return f"{self.left.generate()}:{self.right.generate()}"
 
 
-class NodeAssign(NodeBinOperator):
-    pass
-
-
-class NodeEquals(NodeAssign):
+class NodeEquals(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()} = {self.right.generate()}"
 
 
-class NodePlusEquals(NodeAssign):
+class NodePlusEquals(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()} <- {self.left.generate()} + {self.right.generate()}"
 
 
-class NodeMinusEquals(NodeAssign):
+class NodeMinusEquals(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()}<- {self.left.generate()} - {self.right.generate()}"
 
 
-class NodeAsteriskEquals(NodeAssign):
+class NodeAsteriskEquals(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()}<- {self.left.generate()} * {self.right.generate()}"
 
 
-class NodeSlashEquals(NodeAssign):
+class NodeSlashEquals(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()}<- {self.left.generate()} / {self.right.generate()}"
 
 
-class NodeModEquals(NodeAssign):
+class NodeModEquals(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()}<- {self.left.generate()} % {self.right.generate()}"
 
 
-class NodeDegreeEquals(NodeAssign):
+class NodeDegreeEquals(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()}<- {self.left.generate()} ** {self.right.generate()}"
 
@@ -253,16 +248,17 @@ class NodeIfStatement(Node):
         self.block = block
 
     def generate(self):
-        return f"if {self.condition.generate()} {{\n{self.block.generate()}\n}}"
+        return f"if ({self.condition.generate()}) {{{self.block.generate(1)}}}"
 
 
 class NodeElsIfStatement(NodeIfStatement):
     def generate(self):
-        return f"else if ({self.condition.generate()}) {{\n{self.block.generate()}\n}}"
+        return f"else if ({self.condition.generate()}) {{{self.block.generate(1)}}}"
 
 
 class NodeElseStatement(NodeBlock):
-    pass
+    def generate(self, indent=0):
+        return f" else {{{super().generate(1)}}}"
 
 
 class NodeIfBlock(Node):
@@ -273,11 +269,10 @@ class NodeIfBlock(Node):
 
     def generate(self):
         code = f"{self.if_block.generate()}"
-        for eif in self.elsif:
-            code += f" {eif.generate()}"
+        for elsif in self.elsif:
+            code += f" {elsif.generate()}"
         if self.else_block != "":
-            print(type(self.else_block))
-            code += f"else {{{self.else_block.generate()}\n}}"
+            code += self.else_block.generate(1)
         return code
 
 
@@ -289,7 +284,7 @@ class NodeCycleStatement(Node):
 
 class NodeWhileBlock(NodeCycleStatement):
     def generate(self):
-        return f"while ({self.condition.generate()})\n{{{self.block.generate()}\n}}"
+        return f"while ({self.condition.generate()})\n{{\n{self.block.generate(1)}}}"
 
 
 class NodeUntilBlock(NodeCycleStatement):
@@ -396,12 +391,12 @@ class NodeArrayCall(Node):
 
 class NodeNext(Node):
     def generate(self):
-        return "next\n"
+        return "next"
 
 
 class NodeBreak(Node):
     def generate(self):
-        return "break\n"
+        return "break"
 
 
 class NodeNot(Node):
