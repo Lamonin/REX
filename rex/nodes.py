@@ -201,7 +201,7 @@ class NodeDoubleDot(NodeBinOperator):
 
 class NodeEquals(NodeBinOperator):
     def generate(self):
-        return f"{self.left.generate()} = {self.right.generate()}"
+        return f"{self.left.generate()} <- {self.right.generate()}"
 
 
 class NodePlusEquals(NodeBinOperator):
@@ -248,12 +248,12 @@ class NodeIfStatement(Node):
         self.block = block
 
     def generate(self):
-        return f"if ({self.condition.generate()}) {{{self.block.generate(1)}}}"
+        return f"if ({self.condition.generate()}) {{\n{self.block.generate(1)}}}"
 
 
 class NodeElsIfStatement(NodeIfStatement):
     def generate(self):
-        return f"else if ({self.condition.generate()}) {{{self.block.generate(1)}}}"
+        return f"else if ({self.condition.generate()}) {{\n{self.block.generate(1)}}}"
 
 
 class NodeElseStatement(NodeBlock):
@@ -284,11 +284,12 @@ class NodeCycleStatement(Node):
 
 class NodeWhileBlock(NodeCycleStatement):
     def generate(self):
-        return f"while ({self.condition.generate()})\n{{\n{self.block.generate(1)}}}"
+        return f"while ({self.condition.generate()})\n{{{self.block.generate(1)}}}"
 
 
 class NodeUntilBlock(NodeCycleStatement):
-    pass
+    def generate(self):
+        return f"while (!{self.condition.generate()})\n{{{self.block.generate(1)}}}"
 
 
 class NodeForBlock(Node):
@@ -349,14 +350,13 @@ class NodeFunc(Node):
         self.params = params
 
 
-class NodeFuncDec(Node):
+class NodeFuncDec(NodeFunc):
     def __init__(self, id, params, block):
-        self.id = id
-        self.params = params
+        super().__init__(id, params)
         self.block = block
 
     def generate(self):
-        return f"def {self.id}({self.params.generate()})\n{self.block.generate(indent=1)}end"
+        return f"{self.id} <- function({self.params.generate()}) {{\n{self.block.generate(indent=1)}}}"
 
 
 class NodeFuncCall(NodeFunc):
