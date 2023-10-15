@@ -52,6 +52,7 @@ class Parser:
                 return self.expression()
 
     def block(self, *args: Enum, skiplast=True) -> Node:
+        self.symtable.create_local_data_block()
         statements = []
         while self.token not in args:
             statement = self.statement()
@@ -61,6 +62,7 @@ class Parser:
             self.next_token()
         if skiplast:
             self.next_token()
+        self.symtable.dispose_local_data_block(self.lexer.token.pos)
         return NodeBlock(statements)
 
     def if_block(self) -> Node:
@@ -157,13 +159,14 @@ class Parser:
                 params = self.actual_params()
                 self.require(Special.RPAR)
                 self.next_token()
-                if not self.symtable.exist(id):
-                    self.error("Попытка вызвать функцию, которая не объявлена!")
+                if not self.symtable.is_func_exist(id):
+                    self.error(f"Попытка вызвать функцию {id}, которая не была объявлена!")
                 return NodeFuncCall(id, params)
             case KeyWords.FUNCTION:
                 self.next_token()
                 id = self.lexer.token.value
-                self.symtable.add(id, type(NodeFunc), None, self.lexer.token.pos)
+                #TODO self.symtable.add(id, type(NodeFunc), None, self.lexer.token.pos)
+                self.symtable.add_func(id, NodeFunc, self.lexer.token.pos)
                 self.next_token()
                 self.require(Special.LPAR)
                 self.next_token()
@@ -276,33 +279,30 @@ class Parser:
             case Operators.EQUALS:
                 self.next_token()
                 t = self.parse_expression()
-                if self.symtable.exist(lhs.id):
-                    self.symtable.set(lhs.id, t, self.lexer.token.pos)
-                else:
-                    self.symtable.add(lhs.id, type(t), t, self.lexer.token.pos)
+                self.symtable.add_var(lhs.id, t)
                 return NodeEquals(lhs, t)
             case Operators.ASTERISK_EQUALS:
-                self.symtable.get(lhs.id, self.lexer.token.pos)
+                self.symtable.is_var_exist(lhs.id, self.lexer.token.pos, True)
                 self.next_token()
                 return NodeAsteriskEquals(lhs, self.arg())
             case Operators.SLASH_EQUALS:
-                self.symtable.get(lhs.id, self.lexer.token.pos)
+                self.symtable.is_var_exist(lhs.id, self.lexer.token.pos, True)
                 self.next_token()
                 return NodeSlashEquals(lhs, self.arg())
             case Operators.MOD_EQUALS:
-                self.symtable.get(lhs.id, self.lexer.token.pos)
+                self.symtable.is_var_exist(lhs.id, self.lexer.token.pos, True)
                 self.next_token()
                 return NodeModEquals(lhs, self.arg())
             case Operators.DEGREE_EQUALS:
-                self.symtable.get(lhs.id, self.lexer.token.pos)
+                self.symtable.is_var_exist(lhs.id, self.lexer.token.pos, True)
                 self.next_token()
                 return NodeDegreeEquals(lhs, self.arg())
             case Operators.PLUS_EQUALS:
-                self.symtable.get(lhs.id, self.lexer.token.pos)
+                self.symtable.is_var_exist(lhs.id, self.lexer.token.pos, True)
                 self.next_token()
                 return NodePlusEquals(lhs, self.arg())
             case Operators.MINUS_EQUALS:
-                self.symtable.get(lhs.id, self.lexer.token.pos)
+                self.symtable.is_var_exist(lhs.id, self.lexer.token.pos, True)
                 self.next_token()
                 return NodeMinusEquals(lhs, self.arg())
 
@@ -399,7 +399,7 @@ class Parser:
             args = self.args()
             self.require(Special.RBR)
             self.next_token()
-            self.symtable.get(var.id, self.lexer.token.pos)
+            self.symtable.is_var_exist(var.id, self.lexer.token.pos, True)
             return NodeArrayCall(var.id, args)
         return var
 
@@ -410,20 +410,20 @@ class Parser:
             args = self.args()
             self.require(Special.RBR)
             self.next_token()
-            self.symtable.get(var.id, self.lexer.token.pos)
+            self.symtable.is_var_exist(var.id, self.lexer.token.pos, True)
             return NodeArrayCall(var.id, args)
         elif self.token == Special.LPAR:
             self.next_token()
             if self.token == Special.RPAR:
                 self.next_token()
-                if not self.symtable.exist(var.id):
-                    self.error("Попытка вызвать функцию, которая не объявлена!")
+                if not self.symtable.is_func_exist(var.id):
+                    self.error(f"Попытка вызвать функцию {var.id}, которая не была объявлена!")
                 return NodeFuncCall(var.id, NodeActualParams(list()))
             args = self.args()
             self.require(Special.RPAR)
             self.next_token()
-            if not self.symtable.exist(var.id):
-                self.error("Попытка вызвать функцию, которая не объявлена!")
+            if not self.symtable.is_func_exist(var.id):
+                self.error(f"Попытка вызвать функцию {var.id}, которая не была объявлена!")
             return NodeFuncCall(var.id, NodeActualParams(args))
         return var
 
