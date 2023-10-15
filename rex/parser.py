@@ -1,19 +1,19 @@
-from rex.lexer import Rex
+from rex.lexer import Lexer
 from rex.nodes import *
 from rex.symbols import *
 from rex.symtable import SymTable
 
 
 class Parser:
-    def __init__(self, lexer: Rex):
-        self.lexer: Rex = lexer
+    def __init__(self, lexer: Lexer):
+        self.lexer: Lexer = lexer
         self.lexer.next_token()
-        self.token = self.lexer.lexem.token
+        self.token = self.lexer.token.symbol
         self.symtable = SymTable()
 
     def next_token(self):
         self.lexer.next_token()
-        self.token = self.lexer.lexem.token
+        self.token = self.lexer.token.symbol
 
     def require(self, *args: Enum):
         for arg in args:
@@ -25,7 +25,7 @@ class Parser:
             self.error(f'Ожидается один из токенов {args}, получен токен {self.token}!')
 
     def error(self, msg: str):
-        raise Exception(f'Ошибка синтаксического анализа ({self.lexer.lexem.pos[0]}, {self.lexer.lexem.pos[1]}): {msg}')
+        raise Exception(f'Ошибка синтаксического анализа ({self.lexer.token.pos[0]}, {self.lexer.token.pos[1]}): {msg}')
 
     def statement(self) -> Node | None:
         match self.token:
@@ -150,7 +150,7 @@ class Parser:
     def func_statement(self) -> Node:
         match self.token:
             case Special.ID:
-                id = self.lexer.lexem.value
+                id = self.lexer.token.value
                 self.next_token()
                 self.require(Special.LPAR)
                 self.next_token()
@@ -160,8 +160,8 @@ class Parser:
                 return NodeFuncCall(id, params)
             case KeyWords.FUNCTION:
                 self.next_token()
-                id = self.lexer.lexem.value
-                self.symtable.Add(id, type(NodeFunc), None, self.lexer.lexem.pos)
+                id = self.lexer.token.value
+                self.symtable.add(id, type(NodeFunc), None, self.lexer.token.pos)
                 self.next_token()
                 self.require(Special.LPAR)
                 self.next_token()
@@ -260,6 +260,12 @@ class Parser:
                 self.require(Special.RPAR)
                 self.next_token()
                 return NodePar(expr)
+            case Operators.MINUS:
+                self.next_token()
+                return NodeUnaryMinus(self.arg())
+            case Operators.PLUS:
+                self.next_token()
+                return NodeUnaryPlus(self.arg())
             case _:
                 self.error(f"Был получен токен {self.token}, а ожидался литерал или функция!")
 
@@ -268,33 +274,33 @@ class Parser:
             case Operators.EQUALS:
                 self.next_token()
                 t = self.parse_expression()
-                if self.symtable.Exist(lhs.id):
-                    self.symtable.Set(lhs.id, t, self.lexer.lexem.pos)
+                if self.symtable.exist(lhs.id):
+                    self.symtable.set(lhs.id, t, self.lexer.token.pos)
                 else:
-                    self.symtable.Add(lhs.id, type(t), t, self.lexer.lexem.pos)
+                    self.symtable.add(lhs.id, type(t), t, self.lexer.token.pos)
                 return NodeEquals(lhs, t)
             case Operators.ASTERISK_EQUALS:
-                self.symtable.Get(lhs.id, self.lexer.lexem.pos)
+                self.symtable.get(lhs.id, self.lexer.token.pos)
                 self.next_token()
                 return NodeAsteriskEquals(lhs, self.arg())
             case Operators.SLASH_EQUALS:
-                self.symtable.Get(lhs.id, self.lexer.lexem.pos)
+                self.symtable.get(lhs.id, self.lexer.token.pos)
                 self.next_token()
                 return NodeSlashEquals(lhs, self.arg())
             case Operators.MOD_EQUALS:
-                self.symtable.Get(lhs.id, self.lexer.lexem.pos)
+                self.symtable.get(lhs.id, self.lexer.token.pos)
                 self.next_token()
                 return NodeModEquals(lhs, self.arg())
             case Operators.DEGREE_EQUALS:
-                self.symtable.Get(lhs.id, self.lexer.lexem.pos)
+                self.symtable.get(lhs.id, self.lexer.token.pos)
                 self.next_token()
                 return NodeDegreeEquals(lhs, self.arg())
             case Operators.PLUS_EQUALS:
-                self.symtable.Get(lhs.id, self.lexer.lexem.pos)
+                self.symtable.get(lhs.id, self.lexer.token.pos)
                 self.next_token()
                 return NodePlusEquals(lhs, self.arg())
             case Operators.MINUS_EQUALS:
-                self.symtable.Get(lhs.id, self.lexer.lexem.pos)
+                self.symtable.get(lhs.id, self.lexer.token.pos)
                 self.next_token()
                 return NodeMinusEquals(lhs, self.arg())
 
@@ -380,7 +386,7 @@ class Parser:
 
     def variable(self):
         self.require(Special.ID)
-        name = self.lexer.lexem.value
+        name = self.lexer.token.value
         self.next_token()
         return NodeVariable(name)
 
@@ -391,7 +397,7 @@ class Parser:
             args = self.args()
             self.require(Special.RBR)
             self.next_token()
-            self.symtable.Get(var.id, self.lexer.lexem.pos)
+            self.symtable.get(var.id, self.lexer.token.pos)
             return NodeArrayCall(var.id, args)
         return var
 
@@ -402,7 +408,7 @@ class Parser:
             args = self.args()
             self.require(Special.RBR)
             self.next_token()
-            self.symtable.Get(var.id, self.lexer.lexem.pos)
+            self.symtable.get(var.id, self.lexer.token.pos)
             return NodeArrayCall(var.id, args)
         elif self.token == Special.LPAR:
             self.next_token()
@@ -426,11 +432,11 @@ class Parser:
         node: Node | None = None
         match self.token:
             case Special.INTEGER:
-                node = NodeInteger(self.lexer.lexem.value)
+                node = NodeInteger(self.lexer.token.value)
             case Special.FLOAT:
-                node = NodeFloat(self.lexer.lexem.value)
+                node = NodeFloat(self.lexer.token.value)
             case Special.STR:
-                node = NodeString(self.lexer.lexem.value)
+                node = NodeString(self.lexer.token.value)
             case Reserved.TRUE | Reserved.FALSE:
                 node = NodeBool(self.token == Reserved.TRUE)
             case _:

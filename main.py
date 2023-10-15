@@ -1,4 +1,4 @@
-from rex.lexer import Rex
+from rex.lexer import Lexer
 from rex.parser import Parser
 
 
@@ -13,19 +13,19 @@ def test_sample_lexer(path: str):
     print(f"{'LEXER TEST':=^20}")
     code = read_code(path)
 
-    rex = Rex()
+    rex = Lexer()
     rex.setup(code)
 
     while rex.next_token():
-        print(rex.lexem)
-    print(rex.lexem)
+        print(rex.token)
+    print(rex.token)
 
 
 def test_sample_parser(path: str):
     print(f"{'PARSER TEST':=^20}")
     code = read_code(path)
 
-    rex = Rex()
+    rex = Lexer()
     rex.setup(code)
 
     p: Parser = Parser(rex)
@@ -36,7 +36,7 @@ def test_sample_translator(path: str):
     print(f"{'TRANSLATOR TEST':=^20}")
     code = read_code(path)
 
-    rex = Rex()
+    rex = Lexer()
     rex.setup(code)
 
     p: Parser = Parser(rex)

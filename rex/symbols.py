@@ -97,6 +97,8 @@ ops: dict[str, Operators | Special] = {
     '/=': Operators.SLASH_EQUALS,
     '%=': Operators.MOD_EQUALS,
     '**=': Operators.DEGREE_EQUALS,
+    '!': KeyWords.NOT,
+    '.': Special.DOT,
     '..': Special.DOUBLE_DOT,
     ',': Special.COMMA,
     ';': Special.SEMICOLON

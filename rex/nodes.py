@@ -337,7 +337,10 @@ class NodeParams(Node):
         self.params = params
 
     def generate(self):
-        return ", ".join([str(p) for p in self.params])
+        if isinstance(self.params, list):
+            out = [p.generate() for p in self.params]
+            return "" if len(out) == 0 else out
+        return self.params.generate()
 
 
 class NodeDeclareParams(NodeParams):
@@ -366,7 +369,7 @@ class NodeFuncDec(Node):
 
 class NodeFuncCall(NodeFunc):
     def generate(self):
-        return f"{self.id}({self.params.generate()})\n"
+        return f"{self.id}({self.params.generate()})"
 
 
 class NodeReturn(Node):

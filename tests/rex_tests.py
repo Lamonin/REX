@@ -1,11 +1,11 @@
 import unittest
-from rex.lexer import Rex
+from rex.lexer import Lexer
 from rex.symbols import *
 
 
 class RexParsingTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.rex = Rex()
+        self.rex = Lexer()
 
     def test_numberOperators(self):
         code = '''\
@@ -21,8 +21,8 @@ class RexParsingTests(unittest.TestCase):
 
         parsed_tokens = list()
         while self.rex.next_token():
-            parsed_tokens.append(self.rex.lexem.token)
-        parsed_tokens.append(self.rex.lexem.token)
+            parsed_tokens.append(self.rex.token.symbol)
+        parsed_tokens.append(self.rex.token.symbol)
 
         excepted_tokens = [
             Special.ID,
@@ -84,11 +84,11 @@ class RexParsingTests(unittest.TestCase):
 
         parsed_tokens = list()
         while self.rex.next_token():
-            if self.rex.lexem.value is None:
-                parsed_tokens.append(self.rex.lexem.token)
+            if self.rex.token.value is None:
+                parsed_tokens.append(self.rex.token.symbol)
             else:
-                parsed_tokens.append((self.rex.lexem.token, self.rex.lexem.value))
-        parsed_tokens.append(self.rex.lexem.token)
+                parsed_tokens.append((self.rex.token.symbol, self.rex.token.value))
+        parsed_tokens.append(self.rex.token.symbol)
 
         excepted_result = [
             (Special.INTEGER, '0'),
@@ -141,8 +141,8 @@ class RexParsingTests(unittest.TestCase):
 
         parsed_tokens = list()
         while self.rex.next_token():
-            parsed_tokens.append(self.rex.lexem.token)
-        parsed_tokens.append(self.rex.lexem.token)
+            parsed_tokens.append(self.rex.token.symbol)
+        parsed_tokens.append(self.rex.token.symbol)
 
         excepted_result = [
             KeyWords.FUNCTION,
@@ -180,8 +180,8 @@ class RexParsingTests(unittest.TestCase):
 
         parsed_tokens = list()
         while self.rex.next_token():
-            parsed_tokens.append(self.rex.lexem.token)
-        parsed_tokens.append(self.rex.lexem.token)
+            parsed_tokens.append(self.rex.token.symbol)
+        parsed_tokens.append(self.rex.token.symbol)
 
         excepted_result = [
             Special.LPAR,
@@ -205,8 +205,8 @@ class RexParsingTests(unittest.TestCase):
 
         parsed_tokens = list()
         while self.rex.next_token():
-            parsed_tokens.append(self.rex.lexem.token)
-        parsed_tokens.append(self.rex.lexem.token)
+            parsed_tokens.append(self.rex.token.symbol)
+        parsed_tokens.append(self.rex.token.symbol)
 
         excepted_result = [
             Operators.LESS,
@@ -232,8 +232,8 @@ class RexParsingTests(unittest.TestCase):
 
         parsed_tokens = list()
         while self.rex.next_token():
-            parsed_tokens.append(self.rex.lexem.token)
-        parsed_tokens.append(self.rex.lexem.token)
+            parsed_tokens.append(self.rex.token.symbol)
+        parsed_tokens.append(self.rex.token.symbol)
 
         excepted_result = [
             Special.COMMA,
@@ -255,8 +255,8 @@ class RexParsingTests(unittest.TestCase):
 
         parsed_tokens = list()
         while self.rex.next_token():
-            parsed_tokens.append(self.rex.lexem.token)
-        parsed_tokens.append(self.rex.lexem.token)
+            parsed_tokens.append(self.rex.token.symbol)
+        parsed_tokens.append(self.rex.token.symbol)
 
         excepted_result = [
             Special.NEWLINE,
@@ -273,8 +273,8 @@ class RexParsingTests(unittest.TestCase):
 
         parsed_tokens = list()
         while self.rex.next_token():
-            parsed_tokens.append(self.rex.lexem.token)
-        parsed_tokens.append(self.rex.lexem.token)
+            parsed_tokens.append(self.rex.token.symbol)
+        parsed_tokens.append(self.rex.token.symbol)
 
         excepted_result = [Special.EOF]
 
@@ -298,8 +298,8 @@ class RexParsingTests(unittest.TestCase):
 
             parsed_tokens = list()
             while self.rex.next_token():
-                parsed_tokens.append(self.rex.lexem)
-            parsed_tokens.append(self.rex.lexem)
+                parsed_tokens.append(self.rex.token)
+            parsed_tokens.append(self.rex.token)
 
             return parsed_tokens
 
@@ -338,8 +338,8 @@ class RexParsingTests(unittest.TestCase):
 
         parsed_tokens = list()
         while self.rex.next_token():
-            parsed_tokens.append(str(self.rex.lexem))
-        parsed_tokens.append(str(self.rex.lexem))
+            parsed_tokens.append(str(self.rex.token))
+        parsed_tokens.append(str(self.rex.token))
 
         excepted_result = [
             'ID:hello:1:17', 'EQUALS:1:23', 'STR:Hello, world!:1:25', 'NEWLINE:1:40', 'NEWLINE:2:34', 'FUNCTION:3:17',
@@ -368,8 +368,8 @@ class RexParsingTests(unittest.TestCase):
 
         parsed_tokens = list()
         while self.rex.next_token():
-            parsed_tokens.append(self.rex.lexem.pos)
-        parsed_tokens.append(self.rex.lexem.pos)
+            parsed_tokens.append(self.rex.token.pos)
+        parsed_tokens.append(self.rex.token.pos)
 
         excepted_result = [
             (1, 16), (1, 25), (1, 27),

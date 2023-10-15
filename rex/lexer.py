@@ -20,29 +20,29 @@ class Transliterator:
         return c == '"' or c == "'"
 
 
-class Lexem:
+class Token:
     def __init__(self, token: Enum, value: str = None, pos: tuple[int, int] = None):
-        self.token = token
+        self.symbol = token
         self.value = value
         self.pos = pos if pos is not None else (-1, -1)
 
     def __str__(self):
-        return f"{self.token.name}" + (
+        return f"{self.symbol.name}" + (
             f":{self.value}" if self.value is not None else "") + f":{self.pos[0]}:{self.pos[1]}"
 
-    def __eq__(self, other: 'Lexem'):
-        return self.token == other.token \
+    def __eq__(self, other: 'Token'):
+        return self.symbol == other.symbol \
             and self.value == other.value \
             and self.pos == other.pos
 
 
-class Rex:
+class Lexer:
     def __init__(self):
         self.code: str = str()
         self.char_pos: int = 0
         self.position: int = -1
         self.line: int = 1
-        self.lexem: Lexem | None = None
+        self.token: Token | None = None
         self.trnslt = Transliterator()
 
     def setup(self, code: str):
@@ -50,7 +50,7 @@ class Rex:
         self.char_pos: int = 0
         self.position: int = -1
         self.line: int = 1
-        self.lexem: Lexem | None = None
+        self.token: Token | None = None
 
     @property
     def pos(self):
@@ -62,65 +62,81 @@ class Rex:
         self.position = value
 
     def next_token(self) -> bool:
-        def char() -> str:
-            return self.code[self.pos]
-
         code_len = len(self.code)
 
+        def char() -> str:
+            return self.code[self.pos]
+        
+        def is_eof() -> bool:
+            return self.pos >= code_len
+        
+        def next_char(): self.pos += 1
+        def prev_char(): self.pos -= 1
+
+        def next_char_is(c: str) -> bool:
+            if not is_eof():
+                next_char()
+                res = char() == c
+                prev_char()
+                return res
+            return False
+
+        def try_next_char() -> bool:
+            if is_eof():
+                return False
+            next_char()
+            if is_eof():
+                return False
+            return True
+
         # SKIP WHITESPACE AND HANDLE NEWLINES
-        self.pos += 1
-        while self.pos < code_len and char().isspace():
+        next_char()
+        while not is_eof() and char().isspace():
             if char() == '\n':
-                self.lexem = Lexem(Special.NEWLINE, pos=(self.line, self.char_pos))
+                self.token = Token(Special.NEWLINE, pos=(self.line, self.char_pos))
                 self.line += 1
                 self.char_pos = 0
                 return True
-            self.pos += 1
+            next_char()
 
         # END OF FILE
-        if self.pos >= code_len:
-            self.lexem = Lexem(Special.EOF, pos=(self.line, self.char_pos))
+        if is_eof():
+            self.token = Token(Special.EOF, pos=(self.line, self.char_pos))
             return False
 
         # OPERATORS
-        if char() in ops or char() in ['.', '!']:
+        if char() in ops:
             start_char_pos = self.char_pos
             op = char()
 
-            self.pos += 1
-            while self.pos < code_len and (char() in ops or char() == '.'):
+            while op in ops and try_next_char():
                 op += char()
-                self.pos += 1
-            else:
-                self.pos -= 1
 
-            if op in ops:
-                self.lexem = Lexem(ops[op], pos=(self.line, start_char_pos))
-            elif op == '.':
-                self.lexem = Lexem(Special.DOT, pos=(self.line, start_char_pos))
-            else:
-                self.pos -= 1
-                self.lexem = Lexem(ops[char()], pos=(self.line, start_char_pos))
+            if op not in ops:
+                op = op[:-1]
+                prev_char()
+
+            self.token = Token(ops[op], pos=(self.line, start_char_pos))
         # BRACKETS
         elif char() in brackets:
-            self.lexem = Lexem(brackets[char()], pos=(self.line, self.char_pos))
+            self.token = Token(brackets[char()], pos=(self.line, self.char_pos))
         # COMMENTARY
         elif char() == '#':
-            while self.pos < code_len and char() != '\n':
-                self.pos += 1
-            if self.pos < code_len and char() == '\n':
-                self.pos -= 1
+            while not is_eof() and char() != '\n':
+                next_char()
+            if not is_eof() and char() == '\n':
+                prev_char()
             return self.next_token()
         # STRINGS
         elif self.trnslt.is_quote(char()):
             quote = char()
             start_pos = self.pos + 1
             start_char_pos = self.char_pos
-            self.pos += 1
-            while self.pos < code_len and char() != quote:
-                self.pos += 1
-            if self.pos < code_len and char() == quote:
-                self.lexem = Lexem(Special.STR, self.code[start_pos:self.pos], pos=(self.line, start_char_pos))
+            next_char()
+            while not is_eof() and char() != quote:
+                next_char()
+            if not is_eof() and char() == quote:
+                self.token = Token(Special.STR, self.code[start_pos:self.pos], pos=(self.line, start_char_pos))
             else:
                 if code_len - self.pos < 10:
                     example = self.code[start_pos:-1]
@@ -133,39 +149,39 @@ class Rex:
             start_char_pos = self.char_pos
 
             token_type = Special.INTEGER
-            while self.pos < code_len and char().isdigit():
-                self.pos += 1
+            while not is_eof() and char().isdigit():
+                next_char()
 
-            if self.pos < code_len and char() == '.':
-                self.pos += 1
+            if not is_eof() and char() == '.':
+                next_char()
                 if char() == '.':
                     self.pos -= 2
-                    self.lexem = Lexem(Special.INTEGER, self.code[start_pos:self.pos + 1],
+                    self.token = Token(Special.INTEGER, self.code[start_pos:self.pos + 1],
                                        pos=(self.line, start_char_pos))
                     return True
-                if self.pos < code_len and char().isdigit():
+                if not is_eof() and char().isdigit():
                     token_type = Special.FLOAT
-                    while self.pos < code_len and char().isdigit():
-                        self.pos += 1
+                    while not is_eof() and char().isdigit():
+                        next_char()
                 else:
-                    self.pos -= 1
+                    prev_char()
 
-            if self.pos < code_len and char() in ['e', 'E']:
-                self.pos += 1
-                if self.pos < code_len and char() in ['-', '+']:
-                    self.pos += 1
-                while self.pos < code_len and char().isdigit():
-                    self.pos += 1
+            if not is_eof() and char() in ['e', 'E']:
+                next_char()
+                if not is_eof() and char() in ['-', '+']:
+                    next_char()
+                while not is_eof() and char().isdigit():
+                    next_char()
 
-            if self.pos < code_len and not char().isspace() and char() not in ops and char() not in [')', ']', '<',
+            if not is_eof() and not char().isspace() and char() not in ops and char() not in [')', ']', '<',
                                                                                                      '>']:
                 raise Exception(f'Incorrect number token: {self.code[start_pos:self.pos + 1]}')
 
             potential_num: str = self.code[start_pos:self.pos]
-            self.pos -= 1
+            prev_char()
 
             if self.trnslt.is_num(potential_num):
-                self.lexem = Lexem(token_type, potential_num, pos=(self.line, start_char_pos))
+                self.token = Token(token_type, potential_num, pos=(self.line, start_char_pos))
             else:
                 raise Exception(f'Incorrect number token: {self.code[start_pos:self.pos + 1]}')
 
@@ -174,19 +190,19 @@ class Rex:
             start_pos = self.pos
             start_char_pos = self.char_pos
 
-            while self.pos < code_len and (char().isalnum() or char() in ['_', '?']):
-                self.pos += 1
+            while not is_eof() and (char().isalnum() or char() in ['_', '?']):
+                next_char()
 
-            potential_id: str = self.code[start_pos:self.pos]
+            potential_id = self.code[start_pos:self.pos]
 
             if not self.trnslt.is_id(potential_id):
                 raise Exception(f'Incorrect id token: {self.code[start_pos:self.pos]}')
 
             if potential_id in keywords:
-                self.lexem = Lexem(keywords[potential_id], pos=(self.line, start_char_pos))
+                self.token = Token(keywords[potential_id], pos=(self.line, start_char_pos))
             else:
-                self.lexem = Lexem(Special.ID, potential_id, pos=(self.line, start_char_pos))
-            self.pos -= 1
+                self.token = Token(Special.ID, potential_id, pos=(self.line, start_char_pos))
+            prev_char()
         else:
             raise Exception('Incorrect token: ' + char())
 

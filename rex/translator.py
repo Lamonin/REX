@@ -1,10 +1,10 @@
-from rex.lexer import Rex
+from rex.lexer import Lexer
 from rex.parser import Parser
 
 
 class Translator:
     def __init__(self):
-        self.lexer = Rex()
+        self.lexer = Lexer()
         self.parser = Parser(self.lexer)
 
     def get_lexer_result(self, code: str):
