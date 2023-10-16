@@ -1,6 +1,13 @@
 from rex.symbols import Special
 
 
+def get_indent(indent: int):
+    indent_str = ""
+    for i in range(indent):
+        indent_str += "\t"
+    return indent_str
+
+
 class Node:
     def __repr__(self, level=0):
         attrs = self.__dict__
@@ -58,14 +65,13 @@ class NodeProgram(Node):
 
 
 class NodeBlock(Node):
-    def __init__(self, children):
+    def __init__(self, children, indent: int):
         self.children = children
+        self.indent = indent
 
     def generate(self, indent=0):
         code = ""
-        indent_str = ""
-        for i in range(indent):
-            indent_str += "\t"
+        indent_str = get_indent(self.indent if indent == 0 else indent)
         if isinstance(self.children, list):
             for i in self.children:
                 code += f"{indent_str}{i.generate()}\n"
@@ -247,59 +253,69 @@ class NodeIfStatement(Node):
         self.condition = condition
         self.block = block
 
-    def generate(self):
-        return f"if ({self.condition.generate()}) {{\n{self.block.generate(1)}}}"
+    def generate(self, indent=0):
+        indent_str = get_indent(indent)
+        return f"if ({self.condition.generate()}) {{\n{self.block.generate(indent+1)}{indent_str}}}"
 
 
 class NodeElsIfStatement(NodeIfStatement):
-    def generate(self):
-        return f"else if ({self.condition.generate()}) {{\n{self.block.generate(1)}}}"
+    def generate(self, indent=0):
+        indent_str = get_indent(indent)
+        return f"else if ({self.condition.generate()}) {{\n{self.block.generate(indent+1)}{indent_str}}}"
 
 
 class NodeElseStatement(NodeBlock):
     def generate(self, indent=0):
-        return f" else {{{super().generate(1)}}}"
+        indent_str = get_indent(indent)
+        return f"else {{\n{super().generate(indent+1)}{indent_str}}}"
 
 
 class NodeIfBlock(Node):
-    def __init__(self, if_block, elsif=[], else_block=None):
+    def __init__(self, if_block, indent: int, elsif=None, else_block=None):
+        self.indent = indent
         self.if_block = if_block
-        self.elsif = elsif if len(elsif) > 0 else ""
+        self.elsif = elsif if elsif is not None else ""
         self.else_block = else_block if else_block is not None else ""
 
     def generate(self):
-        code = f"{self.if_block.generate()}"
+        indent_str = get_indent(self.indent)
+        code = f"{self.if_block.generate(self.indent)}"
         for elsif in self.elsif:
-            code += f" {elsif.generate()}"
+            code += f" {elsif.generate(self.indent)}"
         if self.else_block != "":
-            code += self.else_block.generate(1)
+            code += f" {self.else_block.generate(self.indent)}"
         return code
 
 
 class NodeCycleStatement(Node):
-    def __init__(self, condition, block):
+    def __init__(self, condition, block, indent):
         self.condition = condition
         self.block = block
+        self.indent = indent
 
 
 class NodeWhileBlock(NodeCycleStatement):
     def generate(self):
-        return f"while ({self.condition.generate()})\n{{{self.block.generate(1)}}}"
+        indent_str = get_indent(self.indent)
+        return f"while ({self.condition.generate()})\n{indent_str}{{\n{self.block.generate(self.indent + 1)}{indent_str}}}"
 
 
 class NodeUntilBlock(NodeCycleStatement):
     def generate(self):
-        return f"while (!{self.condition.generate()})\n{{{self.block.generate(1)}}}"
+        indent_str = get_indent(self.indent)
+        return f"while !({self.condition.generate()})\n{indent_str}{{\n{self.block.generate(self.indent + 1)}{indent_str}}}"
 
 
 class NodeForBlock(Node):
-    def __init__(self, it, iterable, block):
+    def __init__(self, it, iterable, block, indent):
         self.iter = it
         self.iterable = iterable
         self.block = block
+        self.indent = indent
 
     def generate(self):
-        return f"for ({self.iter.generate()} in {self.iterable.generate})" + "{\n" + f"{self.block.generate()}" + "}"
+        indent_str = get_indent(self.indent)
+        return f"for ({self.iter.generate()} in {self.iterable.generate}){{\n{self.block.generate(self.indent)}{indent_str}}}"
 
 
 class NodeUnaryOp(Node):
@@ -351,12 +367,14 @@ class NodeFunc(Node):
 
 
 class NodeFuncDec(NodeFunc):
-    def __init__(self, id, params, block):
+    def __init__(self, id, params, block, indent: int):
         super().__init__(id, params)
         self.block = block
+        self.indent = indent
 
     def generate(self):
-        return f"{self.id} <- function({self.params.generate()}) {{\n{self.block.generate(indent=1)}}}"
+        indent_str = get_indent(self.indent)
+        return f"{self.id} <- function({self.params.generate()}) {{\n{self.block.generate(self.indent + 1)}{indent_str}}}"
 
 
 class NodeFuncCall(NodeFunc):

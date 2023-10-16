@@ -10,6 +10,7 @@ class Parser:
         self.lexer.next_token()
         self.token = self.lexer.token.symbol
         self.symtable = SymTable()
+        self.indent = 0
 
     def next_token(self):
         self.lexer.next_token()
@@ -31,7 +32,7 @@ class Parser:
         match self.token:
             # <if_stmt> | <cycle_stmt> | <func_def> | "RETURN" <args> | <expression>
             case Special.NEWLINE:
-                return NodeNewLine()
+                return None
             case KeyWords.IF:
                 self.next_token()
                 return self.if_statement()
@@ -53,17 +54,20 @@ class Parser:
 
     def block(self, *args: Enum, skiplast=True) -> Node:
         self.symtable.create_local_data_block()
+        self.indent += 1
         statements = []
         while self.token not in args:
             statement = self.statement()
             if statement is not None:
                 statements.append(statement)
+                print(self.lexer.token)
                 self.require(Special.NEWLINE, Special.SEMICOLON)
             self.next_token()
         if skiplast:
             self.next_token()
         self.symtable.dispose_local_data_block(self.lexer.token.pos)
-        return NodeBlock(statements)
+        self.indent -= 1
+        return NodeBlock(statements, self.indent + 1)
 
     def if_block(self) -> Node:
         condition = self.expression()
@@ -83,7 +87,7 @@ class Parser:
     def else_block(self) -> Node:
         self.next_token()
         block = self.block(KeyWords.END)
-        return NodeElseStatement(block)
+        return NodeElseStatement(block, self.indent)
 
     def if_statement(self) -> Node:
         block = []
@@ -91,7 +95,7 @@ class Parser:
         block.append(if_block)
         if self.token == KeyWords.END:
             self.next_token()
-            return if_block
+            return NodeIfBlock(if_block, self.indent)
         else:
             elsif_block = []
             else_block = None
@@ -102,7 +106,7 @@ class Parser:
                     else_block = self.else_block()
             else:
                 else_block = self.else_block()
-            return NodeIfBlock(if_block, elsif_block, else_block)
+            return NodeIfBlock(if_block, self.indent, elsif_block, else_block)
 
     def cycle_statement(self) -> Node:
         match self.token:
@@ -115,23 +119,23 @@ class Parser:
                 self.require(KeyWords.DO, Special.NEWLINE, Special.SEMICOLON)
                 self.next_token()
                 block = self.block(KeyWords.END)
-                return NodeForBlock(vars_list, iterable, block)
+                return NodeForBlock(NodeActualParams(vars_list), iterable, block, self.indent)
             case KeyWords.WHILE:
                 self.next_token()
                 condition = self.expression()
                 self.require(Special.NEWLINE, Special.SEMICOLON, KeyWords.DO)
                 self.next_token()
                 block = self.block(KeyWords.END)
-                self.next_token()
-                return NodeWhileBlock(condition, block)
+                # self.next_token()
+                return NodeWhileBlock(condition, block, self.indent)
             case KeyWords.UNTIL:
                 self.next_token()
                 condition = self.expression()
                 self.require(Special.NEWLINE, Special.SEMICOLON, KeyWords.DO)
                 self.next_token()
                 block = self.block(KeyWords.END)
-                self.next_token()
-                return NodeUntilBlock(condition, block)
+                # self.next_token()
+                return NodeUntilBlock(condition, block, self.indent)
 
     def declare_params(self) -> Node:
         params = []
@@ -165,8 +169,6 @@ class Parser:
             case KeyWords.FUNCTION:
                 self.next_token()
                 id = self.lexer.token.value
-                #TODO self.symtable.add(id, type(NodeFunc), None, self.lexer.token.pos)
-                self.symtable.add_func(id, NodeFunc, self.lexer.token.pos)
                 self.next_token()
                 self.require(Special.LPAR)
                 self.next_token()
@@ -176,7 +178,8 @@ class Parser:
                 self.require(Special.NEWLINE, Special.SEMICOLON)
                 self.next_token()
                 block = self.block(KeyWords.END)
-                return NodeFuncDec(id, params, block)
+                self.symtable.add_func(id, NodeFunc(id, params), self.lexer.token.pos)
+                return NodeFuncDec(id, params, block, self.indent)
             case _:
                 self.error("Ожидался вызов или объявление функции")
 
