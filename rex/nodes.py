@@ -217,27 +217,27 @@ class NodePlusEquals(NodeBinOperator):
 
 class NodeMinusEquals(NodeBinOperator):
     def generate(self):
-        return f"{self.left.generate()}<- {self.left.generate()} - {self.right.generate()}"
+        return f"{self.left.generate()} <- {self.left.generate()} - {self.right.generate()}"
 
 
 class NodeAsteriskEquals(NodeBinOperator):
     def generate(self):
-        return f"{self.left.generate()}<- {self.left.generate()} * {self.right.generate()}"
+        return f"{self.left.generate()} <- {self.left.generate()} * {self.right.generate()}"
 
 
 class NodeSlashEquals(NodeBinOperator):
     def generate(self):
-        return f"{self.left.generate()}<- {self.left.generate()} / {self.right.generate()}"
+        return f"{self.left.generate()} <- {self.left.generate()} / {self.right.generate()}"
 
 
 class NodeModEquals(NodeBinOperator):
     def generate(self):
-        return f"{self.left.generate()}<- {self.left.generate()} % {self.right.generate()}"
+        return f"{self.left.generate()} <- {self.left.generate()} % {self.right.generate()}"
 
 
 class NodeDegreeEquals(NodeBinOperator):
     def generate(self):
-        return f"{self.left.generate()}<- {self.left.generate()} ** {self.right.generate()}"
+        return f"{self.left.generate()} <- {self.left.generate()} ** {self.right.generate()}"
 
 
 class NodePrimary(Node):

@@ -28,6 +28,36 @@ class Parser:
     def error(self, msg: str):
         raise Exception(f'Ошибка синтаксического анализа ({self.lexer.token.pos[0]}, {self.lexer.token.pos[1]}): {msg}')
 
+    def parse(self) -> Node:
+        if self.token == Special.EOF:
+            self.error("Empty file!")
+        else:
+            statements = []
+            while self.token != Special.EOF:
+                statement = self.statement()
+                if statement is not None:
+                    statements.append(statement)
+                    if self.token != Special.EOF:
+                        self.require(Special.NEWLINE, Special.SEMICOLON)
+                self.next_token()
+            return NodeProgram(statements)
+
+    def block(self, *args: Enum, skiplast=True) -> Node:
+        self.symtable.create_local_data_block()
+        self.indent += 1
+        statements = []
+        while self.token not in args:
+            statement = self.statement()
+            if statement is not None:
+                statements.append(statement)
+                self.require(Special.NEWLINE, Special.SEMICOLON)
+            self.next_token()
+        if skiplast:
+            self.next_token()
+        self.symtable.dispose_local_data_block(self.lexer.token.pos)
+        self.indent -= 1
+        return NodeBlock(statements, self.indent + 1)
+
     def statement(self) -> Node | None:
         match self.token:
             # <if_stmt> | <cycle_stmt> | <func_def> | "RETURN" <args> | <expression>
@@ -52,22 +82,44 @@ class Parser:
             case _:
                 return self.expression()
 
-    def block(self, *args: Enum, skiplast=True) -> Node:
-        self.symtable.create_local_data_block()
-        self.indent += 1
-        statements = []
-        while self.token not in args:
-            statement = self.statement()
-            if statement is not None:
-                statements.append(statement)
-                print(self.lexer.token)
-                self.require(Special.NEWLINE, Special.SEMICOLON)
+    def expression(self) -> Node:
+        match self.token:
+            case KeyWords.NOT:
+                self.next_token()
+                first_expr = NodeNot(self.expression())
+            case Special.ID:
+                first_expr = self.mlhs()
+                if not isinstance(first_expr, NodeFuncCall):
+                    return self.asgn_op(first_expr)
+                return first_expr
+            case _:
+                first_expr = self.arg()
+
+        if self.token == KeyWords.AND:
+            first_expr = NodeAnd(first_expr, self.expression())
+        elif self.token == KeyWords.OR:
+            first_expr = NodeOr(first_expr, self.expression())
+
+        return first_expr
+
+    def if_statement(self) -> Node:
+        block = []
+        if_block = self.if_block()
+        block.append(if_block)
+        if self.token == KeyWords.END:
             self.next_token()
-        if skiplast:
-            self.next_token()
-        self.symtable.dispose_local_data_block(self.lexer.token.pos)
-        self.indent -= 1
-        return NodeBlock(statements, self.indent + 1)
+            return NodeIfBlock(if_block, self.indent)
+        else:
+            elsif_block = []
+            else_block = None
+            if self.token == KeyWords.ELSIF:
+                while self.token not in {KeyWords.END, KeyWords.ELSE}:
+                    elsif_block.append(self.elseif_block())
+                if self.token == KeyWords.ELSE:
+                    else_block = self.else_block()
+            else:
+                else_block = self.else_block()
+            return NodeIfBlock(if_block, self.indent, elsif_block, else_block)
 
     def if_block(self) -> Node:
         condition = self.expression()
@@ -89,24 +141,21 @@ class Parser:
         block = self.block(KeyWords.END)
         return NodeElseStatement(block, self.indent)
 
-    def if_statement(self) -> Node:
-        block = []
-        if_block = self.if_block()
-        block.append(if_block)
-        if self.token == KeyWords.END:
-            self.next_token()
-            return NodeIfBlock(if_block, self.indent)
-        else:
-            elsif_block = []
-            else_block = None
-            if self.token == KeyWords.ELSIF:
-                while self.token not in {KeyWords.END, KeyWords.ELSE}:
-                    elsif_block.append(self.elseif_block())
-                if self.token == KeyWords.ELSE:
-                    else_block = self.else_block()
-            else:
-                else_block = self.else_block()
-            return NodeIfBlock(if_block, self.indent, elsif_block, else_block)
+    def declare_params(self) -> Node:
+        params = []
+        while self.token not in {Special.RPAR}:
+            params.append(self.variable())
+            if self.token == Special.COMMA:
+                self.next_token()
+        return NodeDeclareParams(params)
+
+    def actual_params(self) -> Node:
+        params = []
+        while self.token not in {Special.RPAR}:
+            params.append(self.expression())
+            if self.token == Special.COMMA:
+                self.next_token()
+        return NodeActualParams(params)
 
     def cycle_statement(self) -> Node:
         match self.token:
@@ -136,22 +185,6 @@ class Parser:
                 block = self.block(KeyWords.END)
                 # self.next_token()
                 return NodeUntilBlock(condition, block, self.indent)
-
-    def declare_params(self) -> Node:
-        params = []
-        while self.token not in {Special.RPAR}:
-            params.append(self.variable())
-            if self.token == Special.COMMA:
-                self.next_token()
-        return NodeDeclareParams(params)
-
-    def actual_params(self) -> Node:
-        params = []
-        while self.token not in {Special.RPAR}:
-            params.append(self.expression())
-            if self.token == Special.COMMA:
-                self.next_token()
-        return NodeActualParams(params)
 
     def func_statement(self) -> Node:
         match self.token:
@@ -183,44 +216,10 @@ class Parser:
             case _:
                 self.error("Ожидался вызов или объявление функции")
 
-    def expression(self) -> Node:
-        match self.token:
-            case KeyWords.NOT:
-                self.next_token()
-                first_expr = NodeNot(self.expression())
-            case Special.ID:
-                first_expr = self.mlhs()
-                if not isinstance(first_expr, NodeFuncCall):
-                    return self.asgn_op(first_expr)
-                return first_expr
-            case _:
-                first_expr = self.arg()
-
-        if self.token == KeyWords.AND:
-            first_expr = NodeAnd(first_expr, self.expression())
-        elif self.token == KeyWords.OR:
-            first_expr = NodeOr(first_expr, self.expression())
-
-        return first_expr
-
     def return_statement(self) -> Node:
         if self.token in [Special.NEWLINE, Special.SEMICOLON]:
             return NodeReturn("")
         return NodeReturn(self.args())
-
-    def parse(self) -> Node:
-        if self.token == Special.EOF:
-            self.error("Empty file!")
-        else:
-            statements = []
-            while self.token != Special.EOF:
-                statement = self.statement()
-                if statement is not None:
-                    statements.append(statement)
-                    if self.token != Special.EOF:
-                        self.require(Special.NEWLINE, Special.SEMICOLON)
-                self.next_token()
-            return NodeProgram(statements)
 
     def mlhs(self):
         id = self.lexer.token.value
@@ -279,37 +278,6 @@ class Parser:
             args.append(self.arg())
         return NodeArgs(args)
 
-    def primary(self) -> Node:
-        match self.token:
-            # <literal> | <lhs> | <func_call> | "LBR" [args] "RBR"
-            case Special.ID:
-                return self.rhs()
-            case Special.INTEGER | Special.FLOAT | Special.STR | Reserved.TRUE | Reserved.FALSE | Reserved.NIL:
-                return self.literal()
-            case Special.LBR:  # Array definition
-                self.next_token()
-                if self.token == Special.RBR:
-                    self.next_token()
-                    return NodeArray(list())
-                args = self.args()
-                self.require(Special.RBR)
-                self.next_token()
-                return NodeArray(args)
-            case Special.LPAR:
-                self.next_token()
-                expr = self.parse_expression()
-                self.require(Special.RPAR)
-                self.next_token()
-                return NodePar(expr)
-            case Operators.MINUS:
-                self.next_token()
-                return NodeUnaryMinus(self.arg())
-            case Operators.PLUS:
-                self.next_token()
-                return NodeUnaryPlus(self.arg())
-            case _:
-                self.error(f"Был получен токен {self.token}, а ожидался литерал или функция!")
-
     def asgn_op(self, lhs):
         match self.token:
             case Operators.EQUALS:
@@ -341,6 +309,29 @@ class Parser:
                 self.symtable.is_var_exist(lhs.id, self.lexer.token.pos, True)
                 self.next_token()
                 return NodeMinusEquals(lhs, self.arg())
+
+    def bin_op(self, first):
+        bin_operator: dict = {
+            Operators.ASTERISK: NodeAsterisk,
+            Operators.SLASH: NodeSlash,
+            Operators.MOD: NodeMod,
+            Operators.DEGREE: NodeDegree,
+            Operators.PLUS: NodePlus,
+            Operators.MINUS: NodeMinus,
+            Operators.GREATER: NodeGreater,
+            Operators.GREATER_EQUAL: NodeGreaterEqual,
+            Operators.LESS: NodeLess,
+            Operators.LESS_EQUAL: NodeLessEqual,
+            Operators.DOUBLE_EQUALS: NodeCompEqual,
+            Operators.NOT_EQUALS: NodeNotEqual
+        }
+
+        if self.token not in bin_operator:
+            self.error(f"Был получен токен {self.token}, а ожидался бинарный оператор!")
+
+        node = bin_operator[self.token](first, self.arg())
+        self.next_token()
+        return node
 
     def parse_expression(self) -> Node:
         left = self.term()
@@ -390,37 +381,36 @@ class Parser:
             op = self.token
         return left
 
-    def bin_op(self, first):
-        node: Node | None = None
+    def primary(self) -> Node:
         match self.token:
-            case Operators.ASTERISK:
-                node = NodeAsterisk(first, self.arg())
-            case Operators.SLASH:
-                node = NodeSlash(first, self.arg())
-            case Operators.MOD:
-                node = NodeMod(first, self.arg())
-            case Operators.DEGREE:
-                node = NodeDegree(first, self.arg())
-            case Operators.PLUS:
-                node = NodePlus(first, self.arg())
+            # <literal> | <lhs> | <func_call> | "LBR" [args] "RBR"
+            case Special.ID:
+                return self.rhs()
+            case Special.INTEGER | Special.FLOAT | Special.STR | Reserved.TRUE | Reserved.FALSE | Reserved.NIL:
+                return self.literal()
+            case Special.LBR:  # Array definition
+                self.next_token()
+                if self.token == Special.RBR:
+                    self.next_token()
+                    return NodeArray(list())
+                args = self.args()
+                self.require(Special.RBR)
+                self.next_token()
+                return NodeArray(args)
+            case Special.LPAR:
+                self.next_token()
+                expr = self.parse_expression()
+                self.require(Special.RPAR)
+                self.next_token()
+                return NodePar(expr)
             case Operators.MINUS:
-                node = NodeMinus(first, self.arg())
-            case Operators.LESS:
-                node = NodeLess(first, self.arg())
-            case Operators.LESS_EQUAL:
-                node = NodeLessEqual(first, self.arg())
-            case Operators.GREATER:
-                node = NodeGreater(first, self.arg())
-            case Operators.GREATER_EQUAL:
-                node = NodeGreaterEqual(first, self.arg())
-            case Operators.DOUBLE_EQUALS:
-                node = NodeCompEqual(first, self.arg())
-            case Operators.NOT_EQUALS:
-                node = NodeNotEqual(first, self.arg())
+                self.next_token()
+                return NodeUnaryMinus(self.arg())
+            case Operators.PLUS:
+                self.next_token()
+                return NodeUnaryPlus(self.arg())
             case _:
-                self.error(f"Был получен токен {self.token}, а ожидался бинарный оператор!")
-        self.next_token()
-        return node
+                self.error(f"Был получен токен {self.token}, а ожидался литерал или функция!")
 
     def variable(self):
         self.require(Special.ID)

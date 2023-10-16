@@ -10,7 +10,7 @@ def read_code(path: str) -> str:
 
 
 def test_sample_lexer(path: str):
-    print(f"{'LEXER TEST':=^20}")
+    print(f"{'LEXER TEST':=^30}")
     code = read_code(path)
 
     rex = Lexer()
@@ -22,7 +22,7 @@ def test_sample_lexer(path: str):
 
 
 def test_sample_parser(path: str):
-    print(f"{'PARSER TEST':=^20}")
+    print(f"{'PARSER TEST':=^30}")
     code = read_code(path)
 
     rex = Lexer()
@@ -33,7 +33,7 @@ def test_sample_parser(path: str):
 
 
 def test_sample_translator(path: str):
-    print(f"{'TRANSLATOR TEST':=^20}")
+    print(f"{'TRANSLATOR TEST':=^30}")
     code = read_code(path)
 
     rex = Lexer()
