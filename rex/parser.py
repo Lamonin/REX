@@ -188,13 +188,18 @@ class Parser:
             case KeyWords.NOT:
                 self.next_token()
                 first_expr = NodeNot(self.expression())
+            case Special.ID:
+                first_expr = self.mlhs()
+                if not isinstance(first_expr, NodeFuncCall):
+                    return self.asgn_op(first_expr)
+                return first_expr
             case _:
                 first_expr = self.arg()
 
         if self.token == KeyWords.AND:
-            return NodeAnd(first_expr, self.expression())
+            first_expr = NodeAnd(first_expr, self.expression())
         elif self.token == KeyWords.OR:
-            return NodeOr(first_expr, self.expression())
+            first_expr = NodeOr(first_expr, self.expression())
 
         return first_expr
 
@@ -216,6 +221,31 @@ class Parser:
                         self.require(Special.NEWLINE, Special.SEMICOLON)
                 self.next_token()
             return NodeProgram(statements)
+
+    def mlhs(self):
+        id = self.lexer.token.value
+        self.next_token()
+        if self.token == Special.LPAR:
+            self.next_token()
+            if self.token == Special.RPAR:
+                self.next_token()
+                if not self.symtable.is_func_exist(id):
+                    self.error(f"Попытка вызвать функцию {id}, которая не была объявлена!")
+                return NodeFuncCall(id, NodeActualParams(list()))
+            args = self.args()
+            self.require(Special.RPAR)
+            self.next_token()
+            if not self.symtable.is_func_exist(id):
+                self.error(f"Попытка вызвать функцию {id}, которая не была объявлена!")
+            return NodeFuncCall(id, NodeActualParams(args))
+        elif self.token == Special.LBR:
+            self.next_token()
+            args = self.args()
+            self.require(Special.RBR)
+            self.next_token()
+            self.symtable.is_var_exist(id, self.lexer.token.pos, True)
+            return NodeArrayCall(id, args)
+        return NodeVariable(id)
 
     def arg(self):
         match self.token:
@@ -258,6 +288,9 @@ class Parser:
                 return self.literal()
             case Special.LBR:  # Array definition
                 self.next_token()
+                if self.token == Special.RBR:
+                    self.next_token()
+                    return NodeArray(list())
                 args = self.args()
                 self.require(Special.RBR)
                 self.next_token()
@@ -428,6 +461,7 @@ class Parser:
             if not self.symtable.is_func_exist(var.id):
                 self.error(f"Попытка вызвать функцию {var.id}, которая не была объявлена!")
             return NodeFuncCall(var.id, NodeActualParams(args))
+        self.symtable.is_var_exist(var.id, self.lexer.token.pos, True)
         return var
 
     def variable_list(self):

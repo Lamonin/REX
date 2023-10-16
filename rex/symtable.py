@@ -61,7 +61,7 @@ class SymTable:
             if res:
                 return True
         if with_error:
-            self.error(f"Символа с именем {var_id} не существует!")
+            self.error(f"Символа с именем {var_id} не существует!", pos)
         return False
 
     def error(self, msg: str, pos):
