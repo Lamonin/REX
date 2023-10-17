@@ -1,0 +1,125 @@
+(*
+	Грамматика языка Ruby, написанная в EBNF форме.
+
+	Все нетерминалы заключены в угловые (<, >) скобки.
+	Все терминалы являются токенами лексера и заключены в двойные кавычки.
+
+	Уточнение:
+		[A] - элемент A входит или не входит (условное вхождение)
+		{A} - ноль или более элементов A (повторение)
+*)
+program
+	= block;
+
+new_line
+	= "NEWLINE"
+	| "SEMICOLON";
+
+block
+	= stmt, { new_line, stmt };
+
+stmt
+	= if_stmt
+	| cycle_stmt
+	| func_def
+	| "RETURN", args
+	| "NEXT"
+	| "BREAK"
+	| lhs, asgn_op, arg;
+
+func_def
+	= "FUNCTION", "ID", [ "LPAR", [ "ID", [ "COMMA", "ID" ] ], "RPAR" ], new_line, block, "END";
+
+func_call
+	= "ID", [ "LPAR", [ args ], "RPAR" ];
+
+if_stmt
+	= "IF", arg, then, block, { "ELSIF", arg, then, block }, [ "ELSE", block ], "END";
+
+cycle_stmt
+	= "WHILE", arg, do, block, "END"
+	| "UNTIL", arg, do, block, "END"
+	| "FOR", variable, [ "COMMA", variable ], "IN", rhs, do, block, "END";
+
+arg
+	= arg, "DOUBLE_DOT", arg
+	| arg, bin_op, arg
+	| unar_op, arg
+	| "LPAR", args, "RPAR"
+	| primary;
+
+args
+	= arg, { "COMMA", arg };
+
+primary
+	= literal
+	| rhs
+	| "LBR", [ args ], "RBR";
+
+lhs
+	= variable
+	| variable, "LBR", args, "RBR", { "LBR", args, "RBR" };
+
+rhs
+	= lhs
+	| func_call;
+
+then
+	= new_line
+	| "THEN"
+	| new_line, "THEN";
+
+do
+	= new_line
+	| "DO"
+	| new_line, "DO";
+
+bin_op
+	= "PLUS"
+	| "MINUS"
+	| "ASTERISK"
+	| "SLASH"
+	| "MOD"
+	| "DEGREE"
+	| "AND"
+	| "OR"
+	| comp_op;
+
+unar_op
+	= "NOT"
+	| "MINUS"
+	| "PLUS";
+
+asgn_op
+	= "EQUALS"
+	| "PLUS_EQUALS"
+	| "MINUS_EQUALS"
+	| "ASTERISK_EQUALS"
+	| "SLASH_EQUALS"
+	| "MOD_EQUALS"
+	| "DEGREE_EQUALS";
+
+comp_op
+	= "GREATER"
+	| "GREATER_EQUAL"
+	| "LESS"
+	| "LESS_EQUAL"
+	| "DOUBLE_EQUALS"
+	| "NOT_EQUALS";
+
+variable
+	= "ID";
+
+literal
+	= numeric
+	| boolean
+	| "STRING"
+	| "NIL";
+
+numeric
+	= "INTEGER"
+	| "FLOAT";
+
+boolean
+	= "TRUE"
+	| "FALSE";
