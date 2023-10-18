@@ -391,20 +391,21 @@ class NodeReturn(Node):
 
 
 class NodeArray(Node):
-    def __init__(self, args):
+    def __init__(self, args=None):
         self.args = args
 
     def generate(self):
-        return str(self.args)
+        return str(self.args) if self.args is not None else "[]"
 
 
 class NodeArrayCall(Node):
-    def __init__(self, id, args):
+    def __init__(self, id, args: list):
         self.id = id
         self.args = args
 
     def generate(self):
-        return f"{self.id}{self.args}"
+        args_str = "".join([f"[{a.generate()}]" for a in self.args])
+        return f"{self.id}{args_str}"
 
 
 class NodeNext(Node):

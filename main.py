@@ -1,4 +1,5 @@
 from rex.lexer import Lexer
+from rex.nodes import NodeArrayCall, NodeInteger, NodeArgs
 from rex.parser import Parser
 
 
@@ -10,7 +11,7 @@ def read_code(path: str) -> str:
 
 
 def test_sample_lexer(path: str):
-    print(f"{'LEXER TEST':=^30}")
+    print(f"{'LEXER RESULT':=^30}")
     code = read_code(path)
 
     rex = Lexer()
@@ -22,24 +23,18 @@ def test_sample_lexer(path: str):
 
 
 def test_sample_parser(path: str):
-    print(f"{'PARSER TEST':=^30}")
+    print(f"{'PARSER RESULT':=^30}")
     code = read_code(path)
-
-    rex = Lexer()
-    rex.setup(code)
-
-    p: Parser = Parser(rex)
+    p: Parser = Parser()
+    p.setup(code)
     print(p.parse())
 
 
 def test_sample_translator(path: str):
-    print(f"{'TRANSLATOR TEST':=^30}")
+    print(f"{'TRANSLATOR RESULT':=^30}")
     code = read_code(path)
-
-    rex = Lexer()
-    rex.setup(code)
-
-    p: Parser = Parser(rex)
+    p: Parser = Parser()
+    p.setup(code)
     print(p.parse().generate())
 
 

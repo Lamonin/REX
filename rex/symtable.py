@@ -45,17 +45,19 @@ class SymTable:
             self.error(f"Функция {func_id} уже была объявлена!", pos)
         self.data_blocks[-1].add_func(func_id, func_node)
 
-    def is_func_exist(self, func_id):
+    def is_func_exist(self, func_id, pos, with_error=False):
         for db in reversed(self.data_blocks):
             res = db.is_func_exist(func_id)
             if res:
                 return True
+        if with_error:
+            self.error(f"Функция с именем {func_id} не была объявлена!", pos)
         return False
 
     def add_var(self, var_id, value: Node):
         self.data_blocks[-1].add_var(var_id, value)
 
-    def is_var_exist(self, var_id, pos, with_error = False):
+    def is_var_exist(self, var_id, pos, with_error=False):
         for db in reversed(self.data_blocks):
             res = db.is_var_exist(var_id)
             if res:

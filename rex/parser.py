@@ -5,12 +5,19 @@ from rex.symtable import SymTable
 
 
 class Parser:
-    def __init__(self, lexer: Lexer):
-        self.lexer: Lexer = lexer
+    def __init__(self):
+        self.lexer: Lexer | None = None
+        self.symtable: SymTable | None = None
+        self.indent = 0
+        self.token = None
+
+    def setup(self, code):
+        self.lexer = Lexer()
+        self.lexer.setup(code)
         self.lexer.next_token()
-        self.token = self.lexer.token.symbol
         self.symtable = SymTable()
         self.indent = 0
+        self.token = self.lexer.token.symbol
 
     def next_token(self):
         self.lexer.next_token()
@@ -88,7 +95,18 @@ class Parser:
                 self.next_token()
                 first_expr = NodeNot(self.expression())
             case Special.ID:
-                first_expr = self.mlhs()
+                first_expr = self.lhs()
+                if self.token == Operators.EQUALS:
+                    return self.asgn_op(first_expr)
+                if self.token == Special.LPAR:
+                    self.next_token()
+                    if self.token == Special.RPAR:
+                        self.next_token()
+                        return NodeFuncCall(first_expr.id, NodeActualParams(list()))
+                    call_args = self.args()
+                    self.require(Special.RPAR)
+                    self.next_token()
+                    return NodeFuncCall(first_expr.id, call_args)
                 if not isinstance(first_expr, NodeFuncCall):
                     return self.asgn_op(first_expr)
                 return first_expr
@@ -196,7 +214,7 @@ class Parser:
                 params = self.actual_params()
                 self.require(Special.RPAR)
                 self.next_token()
-                if not self.symtable.is_func_exist(id):
+                if not self.symtable.is_func_exist(id, self.lexer.token.pos):
                     self.error(f"Попытка вызвать функцию {id}, которая не была объявлена!")
                 return NodeFuncCall(id, params)
             case KeyWords.FUNCTION:
@@ -228,13 +246,13 @@ class Parser:
             self.next_token()
             if self.token == Special.RPAR:
                 self.next_token()
-                if not self.symtable.is_func_exist(id):
+                if not self.symtable.is_func_exist(id, self.lexer.token.pos):
                     self.error(f"Попытка вызвать функцию {id}, которая не была объявлена!")
                 return NodeFuncCall(id, NodeActualParams(list()))
             args = self.args()
             self.require(Special.RPAR)
             self.next_token()
-            if not self.symtable.is_func_exist(id):
+            if not self.symtable.is_func_exist(id, self.lexer.token.pos):
                 self.error(f"Попытка вызвать функцию {id}, которая не была объявлена!")
             return NodeFuncCall(id, NodeActualParams(args))
         elif self.token == Special.LBR:
@@ -388,11 +406,11 @@ class Parser:
                 return self.rhs()
             case Special.INTEGER | Special.FLOAT | Special.STR | Reserved.TRUE | Reserved.FALSE | Reserved.NIL:
                 return self.literal()
-            case Special.LBR:  # Array definition
+            case Special.LBR:
                 self.next_token()
                 if self.token == Special.RBR:
                     self.next_token()
-                    return NodeArray(list())
+                    return NodeArray()
                 args = self.args()
                 self.require(Special.RBR)
                 self.next_token()
@@ -418,42 +436,6 @@ class Parser:
         self.next_token()
         return NodeVariable(name)
 
-    def lhs(self):
-        var = self.variable()
-        if self.token == Special.LBR:
-            self.next_token()
-            args = self.args()
-            self.require(Special.RBR)
-            self.next_token()
-            self.symtable.is_var_exist(var.id, self.lexer.token.pos, True)
-            return NodeArrayCall(var.id, args)
-        return var
-
-    def rhs(self):
-        var = self.variable()
-        if self.token == Special.LBR:
-            self.next_token()
-            args = self.args()
-            self.require(Special.RBR)
-            self.next_token()
-            self.symtable.is_var_exist(var.id, self.lexer.token.pos, True)
-            return NodeArrayCall(var.id, args)
-        elif self.token == Special.LPAR:
-            self.next_token()
-            if self.token == Special.RPAR:
-                self.next_token()
-                if not self.symtable.is_func_exist(var.id):
-                    self.error(f"Попытка вызвать функцию {var.id}, которая не была объявлена!")
-                return NodeFuncCall(var.id, NodeActualParams(list()))
-            args = self.args()
-            self.require(Special.RPAR)
-            self.next_token()
-            if not self.symtable.is_func_exist(var.id):
-                self.error(f"Попытка вызвать функцию {var.id}, которая не была объявлена!")
-            return NodeFuncCall(var.id, NodeActualParams(args))
-        self.symtable.is_var_exist(var.id, self.lexer.token.pos, True)
-        return var
-
     def variable_list(self):
         var_list = [self.variable()]
         while self.token == Special.COMMA:
@@ -461,8 +443,38 @@ class Parser:
             var_list.append(self.variable())
         return var_list
 
+    def lhs(self):
+        var = self.variable()
+        if self.token == Special.LBR:
+            args = []
+            while self.token == Special.LBR:
+                self.next_token()
+                idx = self.primary()
+                if not isinstance(idx, NodeInteger):
+                    self.error("Индексами массива могут быть только целые числа!")
+                args.append(idx)
+                self.require(Special.RBR)
+                self.next_token()
+            self.symtable.is_var_exist(var.id, self.lexer.token.pos, True)
+            return NodeArrayCall(var.id, args)
+        return var
+
+    def rhs(self):
+        lhs = self.lhs()
+        if isinstance(lhs, NodeVariable) and self.token == Special.LPAR:
+            self.next_token()
+            if self.token == Special.RPAR:
+                self.next_token()
+                self.symtable.is_func_exist(lhs.id, self.lexer.token.pos, True)
+                return NodeFuncCall(id, NodeActualParams(list()))
+            args = self.args()
+            self.require(Special.RPAR)
+            self.next_token()
+            return NodeFuncCall(id, NodeActualParams(args))
+        return lhs
+
     def literal(self):
-        node: Node | None = None
+        node = None
         match self.token:
             case Special.INTEGER:
                 node = NodeInteger(self.lexer.token.value)

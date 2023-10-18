@@ -31,7 +31,7 @@ func_def
 	= "FUNCTION", "ID", [ "LPAR", [ "ID", [ "COMMA", "ID" ] ], "RPAR" ], new_line, block, "END";
 
 func_call
-	= "ID", [ "LPAR", [ args ], "RPAR" ];
+	= "ID", "LPAR", [ args ], "RPAR";
 
 if_stmt
 	= "IF", arg, then, block, { "ELSIF", arg, then, block }, [ "ELSE", block ], "END";
@@ -45,7 +45,7 @@ arg
 	= arg, "DOUBLE_DOT", arg
 	| arg, bin_op, arg
 	| unar_op, arg
-	| "LPAR", args, "RPAR"
+	| "LPAR", arg, "RPAR"
 	| primary;
 
 args
@@ -58,9 +58,9 @@ primary
 
 lhs
 	= variable
-	| variable, "LBR", args, "RBR", { "LBR", args, "RBR" };
+	| variable, "LBR", "INTEGER", "RBR", { "LBR", "INTEGER", "RBR" };
 
-rhs
+rhs  
 	= lhs
 	| func_call;
 

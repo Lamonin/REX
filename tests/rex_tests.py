@@ -1,9 +1,17 @@
 import unittest
 from rex.lexer import Lexer
+from rex.parser import Parser
 from rex.symbols import *
 
 
-class RexParsingTests(unittest.TestCase):
+def read_code(path: str) -> str:
+    f = open(path)
+    code: str = f.read()
+    f.close()
+    return code
+
+
+class RexLexerTests(unittest.TestCase):
     def setUp(self) -> None:
         self.rex = Lexer()
 
@@ -382,3 +390,15 @@ class RexParsingTests(unittest.TestCase):
         ]
 
         self.assertListEqual(parsed_tokens, excepted_result)
+
+
+class RexParsingTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.lexer = Lexer()
+        self.parser = Parser()
+
+    def test_canParseAllRubyCode(self):
+        code = read_code('codes/code_1.rb')
+        self.parser.setup(code)
+        parse_result = self.parser.parse()
+        print(parse_result)
