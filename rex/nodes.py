@@ -255,19 +255,19 @@ class NodeIfStatement(Node):
 
     def generate(self, indent=0):
         indent_str = get_indent(indent)
-        return f"if ({self.condition.generate()}) {{\n{self.block.generate(indent+1)}{indent_str}}}"
+        return f"if ({self.condition.generate()}) {{\n{self.block.generate(indent + 1)}{indent_str}}}"
 
 
 class NodeElsIfStatement(NodeIfStatement):
     def generate(self, indent=0):
         indent_str = get_indent(indent)
-        return f"else if ({self.condition.generate()}) {{\n{self.block.generate(indent+1)}{indent_str}}}"
+        return f"else if ({self.condition.generate()}) {{\n{self.block.generate(indent + 1)}{indent_str}}}"
 
 
 class NodeElseStatement(NodeBlock):
     def generate(self, indent=0):
         indent_str = get_indent(indent)
-        return f"else {{\n{super().generate(indent+1)}{indent_str}}}"
+        return f"else {{\n{super().generate(indent + 1)}{indent_str}}}"
 
 
 class NodeIfBlock(Node):
@@ -315,7 +315,7 @@ class NodeForBlock(Node):
 
     def generate(self):
         indent_str = get_indent(self.indent)
-        return f"for ({self.iter.generate()} in {self.iterable.generate}){{\n{self.block.generate(self.indent)}{indent_str}}}"
+        return f"for ({self.iter.generate()} in {self.iterable.generate()}) {{\n{self.block.generate(self.indent)}{indent_str}}}"
 
 
 class NodeUnaryOp(Node):
@@ -333,6 +333,11 @@ class NodeUnaryPlus(NodeUnaryOp):
         return f"+{self.right.generate()}"
 
 
+class NodeNot(NodeUnaryOp):
+    def generate(self):
+        return f"!{self.right.generate()}"
+
+
 class NodeArgs(Node):
     def __init__(self, arguments):
         self.arguments = arguments
@@ -348,7 +353,7 @@ class NodeParams(Node):
     def generate(self):
         if isinstance(self.params, list):
             out = [p.generate() for p in self.params]
-            return "" if len(out) == 0 else out
+            return "" if len(out) == 0 else ", ".join(out)
         return self.params.generate()
 
 
@@ -416,14 +421,6 @@ class NodeNext(Node):
 class NodeBreak(Node):
     def generate(self):
         return "break"
-
-
-class NodeNot(Node):
-    def __init__(self, expression):
-        self.expression = expression
-
-    def generate(self):
-        return f"!{self.expression.generate()}"
 
 
 class NodeAnd(NodeBinOperator):

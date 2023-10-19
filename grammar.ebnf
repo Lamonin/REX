@@ -28,7 +28,7 @@ stmt
 	| lhs, asgn_op, arg;
 
 func_def
-	= "FUNCTION", "ID", [ "LPAR", [ "ID", [ "COMMA", "ID" ] ], "RPAR" ], new_line, block, "END";
+	= "FUNCTION", "ID", "LPAR", [ variable, { "COMMA", variable } ], "RPAR", new_line, block, "END";
 
 func_call
 	= "ID", "LPAR", [ args ], "RPAR";
@@ -60,7 +60,7 @@ lhs
 	= variable
 	| variable, "LBR", "INTEGER", "RBR", { "LBR", "INTEGER", "RBR" };
 
-rhs  
+rhs
 	= lhs
 	| func_call;
 

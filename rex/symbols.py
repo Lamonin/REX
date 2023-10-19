@@ -136,12 +136,3 @@ keywords: dict[str, KeyWords] = {
     'false': Reserved.FALSE,
     'nil': Reserved.NIL
 }
-asgn_ops = [
-    Operators.EQUALS,
-    Operators.PLUS_EQUALS,
-    Operators.MINUS_EQUALS,
-    Operators.ASTERISK_EQUALS,
-    Operators.SLASH_EQUALS,
-    Operators.MOD_EQUALS,
-    Operators.DEGREE_EQUALS
-]

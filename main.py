@@ -38,6 +38,22 @@ def test_sample_translator(path: str):
     print(p.parse().generate())
 
 
-test_sample_lexer('samples/sample_2.rb')
-test_sample_parser('samples/sample_2.rb')
-test_sample_translator('samples/sample_2.rb')
+# test_sample_lexer('samples/sample_2.rb')
+# test_sample_parser('samples/sample_2.rb')
+# test_sample_translator('samples/sample_2.rb')
+
+# code = read_code('samples/sample_2.rb')
+code = read_code('tests/codes/code_1.rb')
+
+rex = Lexer()
+rex.setup(code)
+
+while rex.next_token():
+    print(rex.token)
+print(rex.token)
+
+p: Parser = Parser()
+p.setup(code)
+pr = p.parse()
+print(pr)
+print(pr.generate())
