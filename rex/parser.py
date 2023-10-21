@@ -102,7 +102,7 @@ class Parser:
     def statement(self) -> Node | None:
         match self.token:
             case Special.NEWLINE:
-                return None
+                return NodeNewLine()
             case KeyWords.IF:
                 self.next_token()
                 return self.if_statement()
@@ -158,6 +158,8 @@ class Parser:
         condition = self.arg(end=[KeyWords.THEN, Special.NEWLINE, Special.SEMICOLON])
         self.require(KeyWords.THEN, Special.NEWLINE, Special.SEMICOLON)
         self.next_token()
+        if self.token == Special.NEWLINE:
+            self.next_token()
         block = self.block(KeyWords.END, KeyWords.ELSIF, KeyWords.ELSE, skiplast=False)
         return NodeIfStatement(condition, block)
 
@@ -170,6 +172,8 @@ class Parser:
         return NodeElsIfStatement(condition, block)
 
     def else_block(self) -> Node:
+        self.next_token()
+        self.require(Special.NEWLINE)
         self.next_token()
         block = self.block(KeyWords.END)
         return NodeElseStatement(block, self.indent)
@@ -200,6 +204,8 @@ class Parser:
                 iterable = self.arg(end=[KeyWords.DO, Special.NEWLINE, Special.SEMICOLON])
                 self.require(KeyWords.DO, Special.NEWLINE, Special.SEMICOLON)
                 self.next_token()
+                if self.token == Special.NEWLINE:
+                    self.next_token()
 
                 def init_function():
                     for v in vars_list:
