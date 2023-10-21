@@ -1,4 +1,5 @@
 from rex.lexer import Lexer
+from rex.types import *
 from rex.nodes import *
 from rex.symbols import *
 from rex.symtable import SymTable
@@ -78,9 +79,13 @@ class Parser:
 
         return NodeProgram(statements)
 
-    def block(self, *args: Enum, skiplast=True) -> Node:
-        self.symtable.create_local_data_block()
+    def block(self, *args: Enum, skiplast=True, initialize_function = None) -> Node:
+        self.symtable.create_local_name_space()
         self.indent += 1
+
+        if initialize_function:
+            initialize_function()
+
         statements = []
         while self.token not in args:
             statement = self.statement()
@@ -90,7 +95,7 @@ class Parser:
             self.next_token()
         if skiplast:
             self.next_token()
-        self.symtable.dispose_local_data_block(self.lexer.token.pos)
+        self.symtable.dispose_local_name_space(self.lexer.token.pos)
         self.indent -= 1
         return NodeBlock(statements, self.indent + 1)
 
@@ -118,10 +123,12 @@ class Parser:
                 lhs = self.lhs()
                 if self.token == Special.LPAR:  # function call
                     self.next_token()
-                    if self.token == Special.RPAR:
-                        self.next_token()
-                        return NodeFuncCall(lhs.id, NodeActualParams(list()))
+
                     call_args = self.args(end=[Special.COMMA], pars=True)
+                    ft = self.symtable.get_function(lhs.id)
+                    if ft.args_count != -1 and ft.args_count != len(call_args.arguments):
+                        self.error(f"Функция {lhs.id} принимает {ft.args_count} аргумента, а не {len(call_args.arguments)}")
+
                     self.require(Special.RPAR)
                     self.next_token()
                     return NodeFuncCall(lhs.id, call_args)
@@ -167,7 +174,7 @@ class Parser:
         block = self.block(KeyWords.END)
         return NodeElseStatement(block, self.indent)
 
-    def declare_params(self) -> Node:
+    def declare_params(self) -> NodeDeclareParams:
         params = []
         while self.token != Special.RPAR:
             params.append(self.variable())
@@ -175,7 +182,7 @@ class Parser:
                 self.next_token()
         return NodeDeclareParams(params)
 
-    def actual_params(self) -> Node:
+    def actual_params(self) -> NodeActualParams:
         params = []
         while self.token != Special.RPAR:
             params.append(self.arg(end=[Special.COMMA], pars=True))
@@ -193,7 +200,13 @@ class Parser:
                 iterable = self.arg(end=[KeyWords.DO, Special.NEWLINE, Special.SEMICOLON])
                 self.require(KeyWords.DO, Special.NEWLINE, Special.SEMICOLON)
                 self.next_token()
-                block = self.block(KeyWords.END)
+
+                def init_function():
+                    for v in vars_list:
+                        self.symtable.add_variable(v.id, VariableType())
+
+                block = self.block(KeyWords.END, initialize_function=init_function)
+
                 return NodeForBlock(NodeActualParams(vars_list), iterable, block, self.indent)
             case KeyWords.WHILE:
                 self.next_token()
@@ -222,8 +235,14 @@ class Parser:
             self.next_token()
             self.require(Special.NEWLINE, Special.SEMICOLON)
             self.next_token()
-            block = self.block(KeyWords.END)
-            self.symtable.add_func(func_id, NodeFunc(func_id, params), self.lexer.token.pos)
+
+            def init_function():
+                for p in params.params:
+                    self.symtable.add_variable(p.id, VariableType())
+
+            block = self.block(KeyWords.END, initialize_function=init_function)
+
+            self.symtable.add_function(func_id, FunctionType(args_count=len(params.params)))
             return NodeFuncDec(func_id, params, block, self.indent)
         self.error("Ожидалось объявление функции")
 
@@ -309,27 +328,36 @@ class Parser:
         while len(temp_stack) > 0:
             apply_stack_op()
 
-        return out_stack.pop()
+        return out_stack.pop() if len(out_stack) else None
 
     def args(self, end=None, pars=False):
         if end is None:
             end = [Special.COMMA, Special.NEWLINE]
-        args = [self.arg(end=end, pars=pars)]
-        while self.token == Special.COMMA:
-            self.next_token()
-            args.append(self.arg(end=end, pars=pars))
+        args = list()
+        first_arg = self.arg(end=end, pars=pars)
+        if first_arg:
+            args.append(first_arg)
+            while self.token == Special.COMMA:
+                self.next_token()
+                args.append(self.arg(end=end, pars=pars))
         return NodeArgs(args)
 
     def assign_op(self, lhs):
         if self.token == Operators.EQUALS:
             self.next_token()
             value = self.arg()
-            self.symtable.add_var(lhs.id, value)
+
+            if isinstance(value, NodeArray):
+                self.symtable.add_variable(lhs.id, ArrayType())
+            else:
+                self.symtable.add_variable(lhs.id, VariableType())
+
             return NodeEquals(lhs, value)
         else:
             if self.token not in assign_ops:
                 self.error(f"Неизвестный оператор присваивания {self.token}")
-            self.symtable.is_var_exist(lhs.id, self.lexer.token.pos, True)
+            if not self.symtable.variable_exist(lhs.id):
+                self.error(f"Переменная {lhs.id} не была объявлена!")
             self.next_token()
             return assign_ops[self.token](lhs, self.arg())
 
@@ -372,12 +400,6 @@ class Parser:
                 self.require(Special.RBR)
                 self.next_token()
                 return NodeArray(args)
-            case Operators.MINUS:
-                self.next_token()
-                return NodeUnaryMinus(self.arg())
-            case Operators.PLUS:
-                self.next_token()
-                return NodeUnaryPlus(self.arg())
             case _:
                 self.error(f"Был получен токен {self.token}, а ожидался литерал или функция!")
 
@@ -400,13 +422,16 @@ class Parser:
             args = []
             while self.token == Special.LBR:
                 self.next_token()
-                idx = self.primary()
+                idx = self.arg(end=[Special.RBR, Special.COMMA])
                 if isinstance(idx, NodeFloat):
                     self.error("Индексами массива могут быть только целые числа!")
                 args.append(idx)
                 self.require(Special.RBR)
                 self.next_token()
-            self.symtable.is_var_exist(var.id, self.lexer.token.pos, True)
+            if not self.symtable.variable_exist(var.id):
+                self.error(f"Переменная {var.id} не была объявлена!")
+            if not self.symtable.compare_variable_type(var.id, ArrayType):
+                self.error(f"Переменная {var.id} не является массивом!")
             return NodeArrayCall(var.id, args)
         return var
 
@@ -414,11 +439,15 @@ class Parser:
         lhs = self.lhs()
         if isinstance(lhs, NodeVariable) and self.token == Special.LPAR:
             self.next_token()
-            self.symtable.is_func_exist(lhs.id, self.lexer.token.pos, True)
+            if not self.symtable.function_exist(lhs.id):
+                self.error(f"Функция {lhs.id} не была объявлена!")
             params = self.actual_params()
             self.require(Special.RPAR)
             self.next_token()
             return NodeFuncCall(lhs.id, params)
+        else:
+            if not self.symtable.variable_exist(lhs.id):
+                self.error(f"Переменная {lhs.id} не была объявлена!")
         return lhs
 
     def literal(self):

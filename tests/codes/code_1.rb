@@ -3,8 +3,8 @@ b = (20 / (3 + 4))**12 - 3**11
 
 # define a method to sum values
 
-def sum(a, b)
-    return a + b
+def sum(d, c)
+    return d + c
 end
 
 c = sum(a, b)
@@ -34,3 +34,12 @@ for i, j in 0..(c-10) do
 end
 
 puts(arr)
+
+a = []
+a[1] = 200
+
+def foo(a, b)
+    puts(b)
+end
+
+foo(1, 2)

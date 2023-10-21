@@ -1,69 +1,66 @@
+from rex.types import *
 from rex.nodes import *
 
 
-class DataBlock:
+class NameSpace:
     def __init__(self):
-        self.functions: dict[str, NodeFunc] = dict()
-        self.variables: dict[str, Node] = dict()
+        self.variables: dict[str, VariableType] = dict()
+        self.functions: dict[str, FunctionType] = dict()
 
-    def add_func(self, func_id, func_node: NodeFunc):
-        self.functions[func_id] = func_node
+    def add_variable(self, name: str, value: VariableType):
+        self.variables[name] = value
 
-    def is_func_exist(self, func_id):
-        return func_id in self.functions
-
-    def add_var(self, var_id, value: Node):
-        self.variables[var_id] = value
-
-    def is_var_exist(self, var_id):
-        return var_id in self.variables
+    def add_function(self, name: str, value: FunctionType):
+        self.functions[name] = value
 
 
 class SymTable:
     def __init__(self):
-        self.data_blocks: list[DataBlock] = list()
-        self.table = {
-            "puts": (type(NodeFunc), None)
-        }
+        self.name_spaces: list[NameSpace] = list()
 
-        # Define global names
-        gdb = DataBlock()
-        gdb.add_func("puts", NodeFunc("puts", list()))
-        self.data_blocks.append(gdb)
+        # Define global name space
+        gns = NameSpace()
+        gns.add_function("puts", FunctionType(args_count=-1))
 
-    def create_local_data_block(self):
-        self.data_blocks.append(DataBlock())
+        self.name_spaces.append(gns)
 
-    def dispose_local_data_block(self, pos):
-        if len(self.data_blocks) > 1:
-            self.data_blocks.pop()
+    def create_local_name_space(self):
+        self.name_spaces.append(NameSpace())
+
+    def dispose_local_name_space(self, pos):
+        if len(self.name_spaces) > 1:
+            self.name_spaces.pop()
         else:
-            self.error("Попытка уничтожить глобальное пространство переменных!", pos)
+            self.error("Попытка уничтожить глобальное пространство имен!", pos)
 
-    def add_func(self, func_id, func_node: NodeFunc, pos):
-        if self.data_blocks[-1].is_func_exist(func_id):
-            self.error(f"Функция {func_id} уже была объявлена!", pos)
-        self.data_blocks[-1].add_func(func_id, func_node)
+    def add_variable(self, name: str, value: VariableType):
+        self.name_spaces[-1].add_variable(name, value)
 
-    def is_func_exist(self, func_id, pos, with_error=False):
-        for db in reversed(self.data_blocks):
-            res = db.is_func_exist(func_id)
-            if res:
-                return True
-        if with_error:
-            self.error(f"Функция с именем {func_id} не была объявлена!", pos)
+    def add_function(self, name: str, value: FunctionType):
+        self.name_spaces[-1].add_function(name, value)
+
+    def compare_variable_type(self, var_name: str, var_type: type(SemanticType)) -> bool:
+        for ns in reversed(self.name_spaces):
+            if var_name in ns.variables:
+                return isinstance(ns.variables[var_name], var_type)
         return False
 
-    def add_var(self, var_id, value: Node):
-        self.data_blocks[-1].add_var(var_id, value)
-
-    def is_var_exist(self, var_id, pos, with_error=False):
-        for db in reversed(self.data_blocks):
-            res = db.is_var_exist(var_id)
-            if res:
+    def variable_exist(self, name: str) -> bool:
+        for ns in reversed(self.name_spaces):
+            if name in ns.variables:
                 return True
-        if with_error:
-            self.error(f"Символа с именем {var_id} не существует!", pos)
+        return False
+
+    def get_function(self, name: str) -> FunctionType | None:
+        for ns in reversed(self.name_spaces):
+            if name in ns.functions:
+                return ns.functions[name]
+        return None
+
+    def function_exist(self, name: str) -> bool:
+        for ns in reversed(self.name_spaces):
+            if name in ns.functions:
+                return True
         return False
 
     def error(self, msg: str, pos):
