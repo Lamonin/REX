@@ -1,4 +1,5 @@
 from rex.lexer import Lexer
+from rex.misc import get_args_name_from_count
 from rex.types import *
 from rex.nodes import *
 from rex.symbols import *
@@ -122,16 +123,7 @@ class Parser:
             case Special.ID:
                 lhs = self.lhs()
                 if self.token == Special.LPAR:  # function call
-                    self.next_token()
-
-                    call_args = self.args(end=[Special.COMMA], pars=True)
-                    ft = self.symtable.get_function(lhs.id)
-                    if ft.args_count != -1 and ft.args_count != len(call_args.arguments):
-                        self.error(f"Функция {lhs.id} принимает {ft.args_count} аргумента, а не {len(call_args.arguments)}")
-
-                    self.require(Special.RPAR)
-                    self.next_token()
-                    return NodeFuncCall(lhs.id, call_args)
+                    return self.function_call(lhs.id)
                 if not isinstance(lhs, NodeFuncCall):  # assign operation
                     return self.assign_op(lhs)
         self.error(f"Некорректная конструкция {self.lexer.token.pos}")
@@ -209,7 +201,7 @@ class Parser:
 
                 def init_function():
                     for v in vars_list:
-                        self.symtable.add_variable(v.id, VariableType())
+                        self.symtable.add_variable(v.id, Auto())
 
                 block = self.block(KeyWords.END, initialize_function=init_function)
 
@@ -244,11 +236,11 @@ class Parser:
 
             def init_function():
                 for p in params.params:
-                    self.symtable.add_variable(p.id, VariableType())
+                    self.symtable.add_variable(p.id, Auto())
 
             block = self.block(KeyWords.END, initialize_function=init_function)
 
-            self.symtable.add_function(func_id, FunctionType(args_count=len(params.params)))
+            self.symtable.add_function(func_id, Function(args_count=len(params.params)))
             return NodeFuncDec(func_id, params, block, self.indent)
         self.error("Ожидалось объявление функции")
 
@@ -348,15 +340,31 @@ class Parser:
                 args.append(self.arg(end=end, pars=pars))
         return NodeArgs(args)
 
+    def function_call(self, func_name):
+        self.next_token()
+
+        call_args = self.args(end=[Special.COMMA], pars=True)
+        ft = self.symtable.get_function(func_name)
+        if ft.args_count != -1 and ft.args_count != len(call_args.arguments):
+            self.error(f"Функция {func_name} принимает {ft.args_count} {get_args_name_from_count(ft.args_count)}, а не {len(call_args.arguments)}")
+
+        self.require(Special.RPAR)
+        self.next_token()
+
+        if isinstance(ft, PredefinedFunction):
+            return NodeFuncCall(ft.predefined_name, call_args, ft.predefined_construction)
+
+        return NodeFuncCall(func_name, call_args)
+
     def assign_op(self, lhs):
         if self.token == Operators.EQUALS:
             self.next_token()
             value = self.arg()
 
             if isinstance(value, NodeArray):
-                self.symtable.add_variable(lhs.id, ArrayType())
+                self.symtable.add_variable(lhs.id, Array())
             else:
-                self.symtable.add_variable(lhs.id, VariableType())
+                self.symtable.add_variable(lhs.id, Variable())
 
             return NodeEquals(lhs, value)
         else:
@@ -436,7 +444,7 @@ class Parser:
                 self.next_token()
             if not self.symtable.variable_exist(var.id):
                 self.error(f"Переменная {var.id} не была объявлена!")
-            if not self.symtable.compare_variable_type(var.id, ArrayType):
+            if not self.symtable.compare_variable_type(var.id, Auto) and not self.symtable.compare_variable_type(var.id, Array):
                 self.error(f"Переменная {var.id} не является массивом!")
             return NodeArrayCall(var.id, args)
         return var
@@ -444,13 +452,7 @@ class Parser:
     def rhs(self):
         lhs = self.lhs()
         if isinstance(lhs, NodeVariable) and self.token == Special.LPAR:
-            self.next_token()
-            if not self.symtable.function_exist(lhs.id):
-                self.error(f"Функция {lhs.id} не была объявлена!")
-            params = self.actual_params()
-            self.require(Special.RPAR)
-            self.next_token()
-            return NodeFuncCall(lhs.id, params)
+            return self.function_call(lhs.id)
         else:
             if not self.symtable.variable_exist(lhs.id):
                 self.error(f"Переменная {lhs.id} не была объявлена!")

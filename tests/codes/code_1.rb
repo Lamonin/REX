@@ -39,7 +39,16 @@ a = []
 a[1] = 200
 
 def foo(a, b)
+    def puts(a)
+        b = 20
+        return a + b
+    end
+    a[10] = 10
     puts(b)
 end
 
+puts(10)
+
 foo(1, 2)
+
+a = readline(b)

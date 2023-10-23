@@ -383,7 +383,13 @@ class NodeFuncDec(NodeFunc):
 
 
 class NodeFuncCall(NodeFunc):
+    def __init__(self, id, params, predefined_construction=None):
+        self.predefined_construction = predefined_construction
+        super().__init__(id, params)
+
     def generate(self):
+        if self.predefined_construction:
+            return self.predefined_construction.format(name=self.id, args=self.params.generate())
         return f"{self.id}({self.params.generate()})"
 
 
