@@ -15,8 +15,9 @@ class Auto(Variable):
 
 
 class Function(SemanticType):
-    def __init__(self, args_count=0):
+    def __init__(self, args_count=0, return_type=None):
         self.args_count = args_count
+        self.return_type = return_type
 
 
 class PredefinedFunction(Function):

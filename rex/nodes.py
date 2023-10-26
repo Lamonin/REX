@@ -65,18 +65,18 @@ class NodeProgram(Node):
 
 
 class NodeBlock(Node):
-    def __init__(self, children, indent: int):
-        self.children = children
+    def __init__(self, statements, indent: int):
+        self.statements = statements
         self.indent = indent
 
     def generate(self, indent=0):
         code = ""
         indent_str = get_indent(self.indent if indent == 0 else indent)
-        if isinstance(self.children, list):
-            for i in self.children:
+        if isinstance(self.statements, list):
+            for i in self.statements:
                 code += f"{indent_str}{i.generate()}\n"
         else:
-            code += f"{self.children.generate(indent)}"
+            code += f"{self.statements.generate(indent)}"
         return code
 
 
@@ -398,11 +398,11 @@ class NodeFuncCall(NodeFunc):
 
 
 class NodeReturn(Node):
-    def __init__(self, value):
-        self.value = value
+    def __init__(self, value: Node = None):
+        self.value: Node = value
 
     def generate(self):
-        return f"return {self.value.generate()}"
+        return f"return{' ' + self.value.generate() if self.value is not None else ''}"
 
 
 class NodeArray(Node):

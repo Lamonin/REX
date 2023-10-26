@@ -1,5 +1,4 @@
 from rex.types import *
-from rex.nodes import *
 
 
 class NameSpace:

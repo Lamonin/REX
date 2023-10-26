@@ -68,6 +68,15 @@ class Parser:
                 self.error(f'Ожидается токен {args[0]}, получен токен {self.token}!')
             self.error(f'Ожидается один из токенов {args}, получен токен {self.token}!')
 
+    def is_node_logical(self, node: Node) -> bool:
+        if not issubclass(type(node), NodeLogical):
+            if isinstance(node, NodeFuncCall):
+                rt = self.symtable.get_function(node.id).return_type
+                if rt is not None and issubclass(type(rt), NodeLogical):
+                    return True
+            return False
+        return True
+
     def error(self, msg: str):
         raise ParsingError(f'({self.lexer.token.pos[0]}, {self.lexer.token.pos[1]}) : {msg}')
 
@@ -86,7 +95,7 @@ class Parser:
 
         return NodeProgram(statements)
 
-    def block(self, *args: Enum, skiplast=True, initialize_function = None) -> Node:
+    def block(self, *args: Enum, skip_last=True, initialize_function=None) -> NodeBlock:
         self.symtable.create_local_name_space()
         self.indent += 1
 
@@ -100,7 +109,7 @@ class Parser:
                 statements.append(statement)
                 self.require(Special.NEWLINE, Special.SEMICOLON, message="Ожидался конец строки!")
             self.next_token()
-        if skiplast:
+        if skip_last:
             self.next_token()
         self.symtable.dispose_local_name_space(self.lexer.token.pos)
         self.indent -= 1
@@ -158,14 +167,14 @@ class Parser:
         t = condition
         while isinstance(t, NodePar):
             t = t.expr
-        if not issubclass(type(t), NodeLogical):
+        if not self.is_node_logical(t):
             self.error(f"Ожидалось логическое выражение, а получено {type(t).__name__}")
 
         self.require(KeyWords.THEN, Special.NEWLINE, Special.SEMICOLON)
         self.next_token()
         if self.token == Special.NEWLINE:
             self.next_token()
-        block = self.block(KeyWords.END, KeyWords.ELSIF, KeyWords.ELSE, skiplast=False)
+        block = self.block(KeyWords.END, KeyWords.ELSIF, KeyWords.ELSE, skip_last=False)
         return NodeIfStatement(condition, block)
 
     def elseif_block(self) -> Node:
@@ -173,7 +182,7 @@ class Parser:
         condition = self.arg(end=[KeyWords.THEN, Special.NEWLINE, Special.SEMICOLON])
         self.require(KeyWords.THEN, Special.NEWLINE, Special.SEMICOLON)
         self.next_token()
-        block = self.block(KeyWords.END, KeyWords.ELSIF, KeyWords.ELSE, skiplast=False)
+        block = self.block(KeyWords.END, KeyWords.ELSIF, KeyWords.ELSE, skip_last=False)
         return NodeElsIfStatement(condition, block)
 
     def else_block(self) -> Node:
@@ -253,14 +262,24 @@ class Parser:
 
             block = self.block(KeyWords.END, initialize_function=init_function)
 
-            self.symtable.add_function(func_id, Function(args_count=len(params.params)))
+            return_type = None
+            for stmt in block.statements:
+                if isinstance(stmt, NodeReturn):
+                    rt = stmt.value
+                    while isinstance(rt, NodeFuncCall):
+                        rt = self.symtable.get_function(rt.id).return_type
+                    return_type = rt
+                    break
+
+            self.symtable.add_function(func_id, Function(args_count=len(params.params), return_type=return_type))
             return NodeFuncDec(func_id, params, block, self.indent)
         self.error("Ожидалось объявление функции!")
 
     def return_statement(self) -> Node:
         if self.token in [Special.NEWLINE, Special.SEMICOLON]:
-            return NodeReturn("")
-        return NodeReturn(self.args())
+            return NodeReturn()
+        args = self.args()
+        return NodeReturn(args.arguments[0] if len(args.arguments) == 1 else args)
 
     def arg(self, end=None, pars=False):
         if end is None:
@@ -284,17 +303,18 @@ class Parser:
             self.error(f"Некорректный элемент математического выражения {op}")
 
         def apply_stack_op():
-            tp = temp_stack.pop()
-            if isinstance(tp, type) and issubclass(tp, NodeUnaryOp):
-                out_stack.append(tp(out_stack.pop()))
-            elif tp in bin_ops:
-                right = out_stack.pop()
-                left = out_stack.pop()
-                out_stack.append(bin_ops[tp](left, right))
-            elif tp == Special.LPAR:
+            top_of_temp_stack = temp_stack.pop()
+
+            if isinstance(top_of_temp_stack, type) and issubclass(top_of_temp_stack, NodeUnaryOp):
+                out_stack.append(top_of_temp_stack(out_stack.pop()))
+            elif top_of_temp_stack in bin_ops:
+                right_operand = out_stack.pop()
+                left_operand = out_stack.pop()
+                out_stack.append(bin_ops[top_of_temp_stack](left_operand, right_operand))
+            elif top_of_temp_stack == Special.LPAR:
                 self.error("Пропущена закрывающая скобка!")
             else:
-                out_stack.append(tp)
+                out_stack.append(top_of_temp_stack)
 
         temp_stack = []
         out_stack: list[Node] = []

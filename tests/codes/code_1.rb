@@ -39,12 +39,23 @@ a = []
 a[1] = 200
 
 def foo(a, b)
-    def puts(a)
-        b = 20
-        return a + b
-    end
-    a[10] = 10
-    puts(b)
+  return a + b
+end
+
+def boolfunc(a)
+    return a > 10
+end
+
+def boolfunc1(a)
+    return boolfunc(10)
+end
+
+def boolfunc2(a)
+    return boolfunc1(20)
+end
+
+if boolfunc2(20) then
+    puts(10)
 end
 
 puts(10)
