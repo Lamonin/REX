@@ -124,6 +124,8 @@ class Lexer:
         elif char() == '#':
             while not is_eof() and char() != '\n':
                 next_char()
+            self.line += 1
+            self.char_pos = 0
             return self.next_token()
         # STRINGS
         elif self.trnslt.is_quote(char()):

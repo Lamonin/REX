@@ -37,6 +37,10 @@ assign_ops = {
 }
 
 
+class ParsingError(Exception):
+    pass
+
+
 class Parser:
     def __init__(self):
         self.lexer: Lexer | None = None
@@ -56,14 +60,16 @@ class Parser:
         self.lexer.next_token()
         self.token = self.lexer.token.symbol
 
-    def require(self, *args: Enum):
+    def require(self, *args: Enum, message=None):
         if self.token not in args:
+            if message:
+                self.error(message)
             if len(args) == 1:
                 self.error(f'Ожидается токен {args[0]}, получен токен {self.token}!')
             self.error(f'Ожидается один из токенов {args}, получен токен {self.token}!')
 
     def error(self, msg: str):
-        raise Exception(f'Ошибка синтаксического анализа ({self.lexer.token.pos[0]}, {self.lexer.token.pos[1]}): {msg}')
+        raise ParsingError(f'({self.lexer.token.pos[0]}, {self.lexer.token.pos[1]}) : {msg}')
 
     def parse(self) -> Node:
         if self.token == Special.EOF:
@@ -75,7 +81,7 @@ class Parser:
             if statement:
                 statements.append(statement)
                 if self.token != Special.EOF:
-                    self.require(Special.NEWLINE, Special.SEMICOLON)
+                    self.require(Special.NEWLINE, Special.SEMICOLON, message="Ожидался конец строки!")
             self.next_token()
 
         return NodeProgram(statements)
@@ -92,7 +98,7 @@ class Parser:
             statement = self.statement()
             if statement:
                 statements.append(statement)
-                self.require(Special.NEWLINE, Special.SEMICOLON)
+                self.require(Special.NEWLINE, Special.SEMICOLON, message="Ожидался конец строки!")
             self.next_token()
         if skiplast:
             self.next_token()
@@ -148,6 +154,13 @@ class Parser:
 
     def if_block(self) -> Node:
         condition = self.arg(end=[KeyWords.THEN, Special.NEWLINE, Special.SEMICOLON])
+
+        t = condition
+        while isinstance(t, NodePar):
+            t = t.expr
+        if not issubclass(type(t), NodeLogical):
+            self.error(f"Ожидалось логическое выражение, а получено {type(t).__name__}")
+
         self.require(KeyWords.THEN, Special.NEWLINE, Special.SEMICOLON)
         self.next_token()
         if self.token == Special.NEWLINE:
@@ -226,10 +239,10 @@ class Parser:
             self.next_token()
             func_id = self.lexer.token.value
             self.next_token()
-            self.require(Special.LPAR)
+            self.require(Special.LPAR, message="Пропущена открывающая скобка!")
             self.next_token()
             params = self.declare_params()
-            self.require(Special.RPAR)
+            self.require(Special.RPAR, message="Пропущена закрывающая скобка!")
             self.next_token()
             self.require(Special.NEWLINE, Special.SEMICOLON)
             self.next_token()
@@ -242,7 +255,7 @@ class Parser:
 
             self.symtable.add_function(func_id, Function(args_count=len(params.params)))
             return NodeFuncDec(func_id, params, block, self.indent)
-        self.error("Ожидалось объявление функции")
+        self.error("Ожидалось объявление функции!")
 
     def return_statement(self) -> Node:
         if self.token in [Special.NEWLINE, Special.SEMICOLON]:
@@ -343,12 +356,12 @@ class Parser:
     def function_call(self, func_name):
         self.next_token()
 
-        call_args = self.args(end=[Special.COMMA], pars=True)
+        call_args = self.args(end=[Special.COMMA, Special.NEWLINE], pars=True)
         ft = self.symtable.get_function(func_name)
         if ft.args_count != -1 and ft.args_count != len(call_args.arguments):
             self.error(f"Функция {func_name} принимает {ft.args_count} {get_args_name_from_count(ft.args_count)}, а не {len(call_args.arguments)}")
 
-        self.require(Special.RPAR)
+        self.require(Special.RPAR, message="Пропущена закрывающая скобка!")
         self.next_token()
 
         if isinstance(ft, PredefinedFunction):
@@ -418,7 +431,7 @@ class Parser:
                 self.error(f"Был получен токен {self.token}, а ожидался литерал или функция!")
 
     def variable(self):
-        self.require(Special.ID)
+        self.require(Special.ID, message="Ожидалась переменная!")
         name = self.lexer.token.value
         self.next_token()
         return NodeVariable(name)

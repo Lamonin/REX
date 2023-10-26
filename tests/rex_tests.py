@@ -98,7 +98,7 @@ class RexLexerTests(unittest.TestCase):
                 parsed_tokens.append((self.rex.token.symbol, self.rex.token.value))
         parsed_tokens.append(self.rex.token.symbol)
 
-        excepted_result = [
+        expected_result = [
             (Special.INTEGER, '0'),
             Special.NEWLINE,
             (Special.INTEGER, '1'),
@@ -117,7 +117,7 @@ class RexLexerTests(unittest.TestCase):
             Special.EOF
         ]
 
-        self.assertListEqual(parsed_tokens, excepted_result)
+        self.assertListEqual(parsed_tokens, expected_result)
 
     def test_keywordTokens(self):
         # \ - needed to ignore the NEWLINE token.
@@ -152,7 +152,7 @@ class RexLexerTests(unittest.TestCase):
             parsed_tokens.append(self.rex.token.symbol)
         parsed_tokens.append(self.rex.token.symbol)
 
-        excepted_result = [
+        expected_result = [
             KeyWords.FUNCTION,
             KeyWords.RETURN,
             KeyWords.END,
@@ -177,7 +177,7 @@ class RexLexerTests(unittest.TestCase):
             Special.EOF
         ]
 
-        self.assertListEqual(parsed_tokens, excepted_result)
+        self.assertListEqual(parsed_tokens, expected_result)
 
     def test_bracketsTokens(self):
         code = '''\
@@ -191,7 +191,7 @@ class RexLexerTests(unittest.TestCase):
             parsed_tokens.append(self.rex.token.symbol)
         parsed_tokens.append(self.rex.token.symbol)
 
-        excepted_result = [
+        expected_result = [
             Special.LPAR,
             Special.RPAR,
             Special.LBR,
@@ -202,7 +202,7 @@ class RexLexerTests(unittest.TestCase):
             Special.EOF
         ]
 
-        self.assertListEqual(parsed_tokens, excepted_result)
+        self.assertListEqual(parsed_tokens, expected_result)
 
     def test_logicalOperators(self):
         code = '''\
@@ -216,7 +216,7 @@ class RexLexerTests(unittest.TestCase):
             parsed_tokens.append(self.rex.token.symbol)
         parsed_tokens.append(self.rex.token.symbol)
 
-        excepted_result = [
+        expected_result = [
             Operators.LESS,
             Operators.GREATER,
             Operators.LESS_EQUAL,
@@ -229,7 +229,7 @@ class RexLexerTests(unittest.TestCase):
             Special.EOF
         ]
 
-        self.assertListEqual(parsed_tokens, excepted_result)
+        self.assertListEqual(parsed_tokens, expected_result)
 
     def test_specialTokens(self):
         code = '''\
@@ -243,7 +243,7 @@ class RexLexerTests(unittest.TestCase):
             parsed_tokens.append(self.rex.token.symbol)
         parsed_tokens.append(self.rex.token.symbol)
 
-        excepted_result = [
+        expected_result = [
             Special.COMMA,
             Special.DOUBLE_DOT,
             Special.SEMICOLON,
@@ -251,7 +251,7 @@ class RexLexerTests(unittest.TestCase):
             Special.EOF
         ]
 
-        self.assertListEqual(parsed_tokens, excepted_result)
+        self.assertListEqual(parsed_tokens, expected_result)
 
     def test_ignoreWhitespace(self):
         code = '''\
@@ -266,13 +266,13 @@ class RexLexerTests(unittest.TestCase):
             parsed_tokens.append(self.rex.token.symbol)
         parsed_tokens.append(self.rex.token.symbol)
 
-        excepted_result = [
+        expected_result = [
             Special.NEWLINE,
             Special.NEWLINE,
             Special.EOF
         ]
 
-        self.assertListEqual(parsed_tokens, excepted_result)
+        self.assertListEqual(parsed_tokens, expected_result)
 
     def test_emptyInput(self):
         code = ''
@@ -284,9 +284,9 @@ class RexLexerTests(unittest.TestCase):
             parsed_tokens.append(self.rex.token.symbol)
         parsed_tokens.append(self.rex.token.symbol)
 
-        excepted_result = [Special.EOF]
+        expected_result = [Special.EOF]
 
-        self.assertListEqual(parsed_tokens, excepted_result)
+        self.assertListEqual(parsed_tokens, expected_result)
 
     def test_severalRunsOnTheSame(self):
         code = '''\
@@ -349,8 +349,8 @@ class RexLexerTests(unittest.TestCase):
             parsed_tokens.append(str(self.rex.token))
         parsed_tokens.append(str(self.rex.token))
 
-        excepted_result = [
-            'ID:hello:1:17', 'EQUALS:1:23', 'STR:Hello, world!:1:25', 'NEWLINE:1:40', 'NEWLINE:2:34', 'FUNCTION:3:17',
+        expected_result = [
+            'ID:hello:1:17', 'EQUALS:1:23', 'STR:Hello, world!:1:25', 'NEWLINE:1:40', 'FUNCTION:3:17',
             'ID:self:3:21', 'DOT:3:25', 'ID:say_hello:3:26', 'NEWLINE:3:35', 'ID:puts:4:21', 'ID:hello:4:26',
             'NEWLINE:4:31', 'END:5:17', 'NEWLINE:5:20', 'NEWLINE:6:1', 'ID:x:7:17', 'EQUALS:7:19', 'INTEGER:5:7:21',
             'NEWLINE:7:22', 'IF:8:17', 'ID:x:8:20', 'GREATER:8:22', 'INTEGER:10:8:24', 'NEWLINE:8:26', 'ID:puts:9:19',
@@ -364,7 +364,7 @@ class RexLexerTests(unittest.TestCase):
             'DOT:17:30', 'ID:sum:17:31', 'NEWLINE:17:34', 'EOF:18:16'
         ]
 
-        self.assertListEqual(parsed_tokens, excepted_result)
+        self.assertListEqual(parsed_tokens, expected_result)
 
     def test_tokensPositioning(self):
         code = '''\
@@ -379,7 +379,7 @@ class RexLexerTests(unittest.TestCase):
             parsed_tokens.append(self.rex.token.pos)
         parsed_tokens.append(self.rex.token.pos)
 
-        excepted_result = [
+        expected_result = [
             (1, 16), (1, 25), (1, 27),
             (1, 28), (1, 29), (1, 31),
             (1, 32), (1, 34), (1, 35),
@@ -389,16 +389,28 @@ class RexLexerTests(unittest.TestCase):
             (2, 48)
         ]
 
-        self.assertListEqual(parsed_tokens, excepted_result)
+        self.assertListEqual(parsed_tokens, expected_result)
 
 
-class RexParsingTests(unittest.TestCase):
+class RexParserTests(unittest.TestCase):
     def setUp(self) -> None:
         self.lexer = Lexer()
         self.parser = Parser()
 
     def test_canParseAllRubyCode(self):
         code = read_code('codes/code_1.rb')
+        self.parser.setup(code)
+        parse_result = self.parser.parse()
+        print(parse_result)
+
+    def test_functions(self):
+        code = read_code('codes/functions.rb')
+        self.parser.setup(code)
+        parse_result = self.parser.parse()
+        print(parse_result)
+
+    def test_ifstatement(self):
+        code = read_code('codes/if.rb')
         self.parser.setup(code)
         parse_result = self.parser.parse()
         print(parse_result)

@@ -101,7 +101,11 @@ class NodeLiteral(Node):
         return str(self.value)
 
 
-class NodeBool(NodeLiteral):
+class NodeLogical():
+    pass
+
+
+class NodeBool(NodeLiteral, NodeLogical):
     pass
 
 
@@ -170,32 +174,32 @@ class NodeDegree(NodeBinOperator):
         return f"{self.left.generate()} ** {self.right.generate()}"
 
 
-class NodeGreater(NodeBinOperator):
+class NodeGreater(NodeBinOperator, NodeLogical):
     def generate(self):
         return f"{self.left.generate()} > {self.right.generate()}"
 
 
-class NodeGreaterEqual(NodeBinOperator):
+class NodeGreaterEqual(NodeBinOperator, NodeLogical):
     def generate(self):
         return f"{self.left.generate()} >= {self.right.generate()}"
 
 
-class NodeLess(NodeBinOperator):
+class NodeLess(NodeBinOperator, NodeLogical):
     def generate(self):
         return f"{self.left.generate()} < {self.right.generate()}"
 
 
-class NodeLessEqual(NodeBinOperator):
+class NodeLessEqual(NodeBinOperator, NodeLogical):
     def generate(self):
         return f"{self.left.generate()} <= {self.right.generate()}"
 
 
-class NodeCompEqual(NodeBinOperator):
+class NodeCompEqual(NodeBinOperator, NodeLogical):
     def generate(self):
         return f"{self.left.generate()} == {self.right.generate()}"
 
 
-class NodeNotEqual(NodeBinOperator):
+class NodeNotEqual(NodeBinOperator, NodeLogical):
     def generate(self):
         return f"{self.left.generate()} != {self.right.generate()}"
 
@@ -333,7 +337,7 @@ class NodeUnaryPlus(NodeUnaryOp):
         return f"+{self.right.generate()}"
 
 
-class NodeNot(NodeUnaryOp):
+class NodeNot(NodeUnaryOp, NodeLogical):
     def generate(self):
         return f"!{self.right.generate()}"
 

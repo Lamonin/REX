@@ -13,7 +13,7 @@ if 14**2 == (12 - 1) >= 11
     puts("Abboa")
 end
 
-if !(c % 2 == 0) then
+if true then
     def foo(a, b)
         puts("Odd")
     end
