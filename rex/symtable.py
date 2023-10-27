@@ -20,7 +20,14 @@ class SymTable:
         # Define global name space
         gns = NameSpace()
         gns.add_function("puts", PredefinedFunction(predefined_name="print"))
-        gns.add_function("readline", PredefinedFunction(predefined_name="readline", predefined_construction="{name}()", args_count=1))
+        gns.add_function(
+            "readline",
+            PredefinedFunction(
+                predefined_name="readline",
+                predefined_construction="{name}()",
+                args_count=1,
+            ),
+        )
 
         self.name_spaces.append(gns)
 
@@ -39,7 +46,9 @@ class SymTable:
     def add_function(self, name: str, value: Function):
         self.name_spaces[-1].add_function(name, value)
 
-    def compare_variable_type(self, var_name: str, var_type: type(SemanticType)) -> bool:
+    def compare_variable_type(
+        self, var_name: str, var_type: type(SemanticType)
+    ) -> bool:
         for ns in reversed(self.name_spaces):
             if var_name in ns.variables:
                 return isinstance(ns.variables[var_name], var_type)
@@ -64,4 +73,4 @@ class SymTable:
         return False
 
     def error(self, msg: str, pos):
-        raise Exception(f'Ошибка семантического анализа ({pos[0]}, {pos[1]}): {msg}')
+        raise Exception(f"Ошибка семантического анализа ({pos[0]}, {pos[1]}): {msg}")

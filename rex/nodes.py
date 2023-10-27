@@ -16,13 +16,13 @@ class Node:
         if is_sequence:
             elements = list(attrs.values())[0]
             for el in elements:
-                res += '|\t' * level
+                res += "|\t" * level
                 res += "|+-"
                 res += el.__repr__(level + 1)
             res += "\n"
         else:
             for attr_name in attrs:
-                res += '|\t' * level
+                res += "|\t" * level
                 res += "|+-"
                 if isinstance(attrs[attr_name], Special):
                     res += f"{attr_name}: {attrs[attr_name]}"
@@ -31,21 +31,25 @@ class Node:
                     res += f"{attr_name}:"
                     if attr_count > 0:
                         res += "\n"
-                        res += '|\t' * level
+                        res += "|\t" * level
                     res += "["
                     if attr_count > 0:
                         res += "\n"
                     for el in attrs[attr_name]:
-                        res += '|\t' * (level + 1)
-                        res += el.__repr__(level + 1) if (isinstance(el, Node)) else el.__repr__()
-                    res = res.rstrip('\n')
+                        res += "|\t" * (level + 1)
+                        res += (
+                            el.__repr__(level + 1)
+                            if (isinstance(el, Node))
+                            else el.__repr__()
+                        )
+                    res = res.rstrip("\n")
                     if attr_count > 0:
                         res += "\n"
-                        res += '|\t' * level
+                        res += "|\t" * level
                     res += "]"
                 else:
                     res += f"{attr_name}: {attrs[attr_name].__repr__(level + 1) if (isinstance(attrs[attr_name], Node)) else attrs[attr_name].__repr__()}"
-                res = res.rstrip('\n') + "\n"
+                res = res.rstrip("\n") + "\n"
 
         return res
 
@@ -101,7 +105,7 @@ class NodeLiteral(Node):
         return str(self.value)
 
 
-class NodeLogical():
+class NodeLogical:
     pass
 
 
@@ -393,7 +397,9 @@ class NodeFuncCall(NodeFunc):
 
     def generate(self):
         if self.predefined_construction:
-            return self.predefined_construction.format(name=self.id, args=self.params.generate())
+            return self.predefined_construction.format(
+                name=self.id, args=self.params.generate()
+            )
         return f"{self.id}({self.params.generate()})"
 
 

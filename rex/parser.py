@@ -24,7 +24,7 @@ bin_ops = {
 unary_ops = {
     Operators.PLUS: NodeUnaryPlus,
     Operators.MINUS: NodeUnaryMinus,
-    KeyWords.NOT: NodeNot
+    KeyWords.NOT: NodeNot,
 }
 
 assign_ops = {
@@ -65,8 +65,8 @@ class Parser:
             if message:
                 self.error(message)
             if len(args) == 1:
-                self.error(f'Ожидается токен {args[0]}, получен токен {self.token}!')
-            self.error(f'Ожидается один из токенов {args}, получен токен {self.token}!')
+                self.error(f"Ожидается токен {args[0]}, получен токен {self.token}!")
+            self.error(f"Ожидается один из токенов {args}, получен токен {self.token}!")
 
     def is_node_logical(self, node: Node) -> bool:
         if not issubclass(type(node), NodeLogical):
@@ -78,7 +78,9 @@ class Parser:
         return True
 
     def error(self, msg: str):
-        raise ParsingError(f'({self.lexer.token.pos[0]}, {self.lexer.token.pos[1]}) : {msg}')
+        raise ParsingError(
+            f"({self.lexer.token.pos[0]}, {self.lexer.token.pos[1]}) : {msg}"
+        )
 
     def parse(self) -> Node:
         if self.token == Special.EOF:
@@ -90,7 +92,11 @@ class Parser:
             if statement:
                 statements.append(statement)
                 if self.token != Special.EOF:
-                    self.require(Special.NEWLINE, Special.SEMICOLON, message="Ожидался конец строки!")
+                    self.require(
+                        Special.NEWLINE,
+                        Special.SEMICOLON,
+                        message="Ожидался конец строки!",
+                    )
             self.next_token()
 
         return NodeProgram(statements)
@@ -107,7 +113,9 @@ class Parser:
             statement = self.statement()
             if statement:
                 statements.append(statement)
-                self.require(Special.NEWLINE, Special.SEMICOLON, message="Ожидался конец строки!")
+                self.require(
+                    Special.NEWLINE, Special.SEMICOLON, message="Ожидался конец строки!"
+                )
             self.next_token()
         if skip_last:
             self.next_token()
@@ -215,7 +223,9 @@ class Parser:
                 vars_list = self.variable_list()
                 self.require(KeyWords.IN)
                 self.next_token()
-                iterable = self.arg(end=[KeyWords.DO, Special.NEWLINE, Special.SEMICOLON])
+                iterable = self.arg(
+                    end=[KeyWords.DO, Special.NEWLINE, Special.SEMICOLON]
+                )
                 self.require(KeyWords.DO, Special.NEWLINE, Special.SEMICOLON)
                 self.next_token()
                 if self.token == Special.NEWLINE:
@@ -227,17 +237,23 @@ class Parser:
 
                 block = self.block(KeyWords.END, initialize_function=init_function)
 
-                return NodeForBlock(NodeActualParams(vars_list), iterable, block, self.indent)
+                return NodeForBlock(
+                    NodeActualParams(vars_list), iterable, block, self.indent
+                )
             case KeyWords.WHILE:
                 self.next_token()
-                condition = self.arg(end=[KeyWords.DO, Special.NEWLINE, Special.SEMICOLON])
+                condition = self.arg(
+                    end=[KeyWords.DO, Special.NEWLINE, Special.SEMICOLON]
+                )
                 self.require(Special.NEWLINE, Special.SEMICOLON, KeyWords.DO)
                 self.next_token()
                 block = self.block(KeyWords.END)
                 return NodeWhileBlock(condition, block, self.indent)
             case KeyWords.UNTIL:
                 self.next_token()
-                condition = self.arg(end=[KeyWords.DO, Special.NEWLINE, Special.SEMICOLON])
+                condition = self.arg(
+                    end=[KeyWords.DO, Special.NEWLINE, Special.SEMICOLON]
+                )
                 self.require(Special.NEWLINE, Special.SEMICOLON, KeyWords.DO)
                 self.next_token()
                 block = self.block(KeyWords.END)
@@ -271,7 +287,10 @@ class Parser:
                     return_type = rt
                     break
 
-            self.symtable.add_function(func_id, Function(args_count=len(params.params), return_type=return_type))
+            self.symtable.add_function(
+                func_id,
+                Function(args_count=len(params.params), return_type=return_type),
+            )
             return NodeFuncDec(func_id, params, block, self.indent)
         self.error("Ожидалось объявление функции!")
 
@@ -305,12 +324,16 @@ class Parser:
         def apply_stack_op():
             top_of_temp_stack = temp_stack.pop()
 
-            if isinstance(top_of_temp_stack, type) and issubclass(top_of_temp_stack, NodeUnaryOp):
+            if isinstance(top_of_temp_stack, type) and issubclass(
+                top_of_temp_stack, NodeUnaryOp
+            ):
                 out_stack.append(top_of_temp_stack(out_stack.pop()))
             elif top_of_temp_stack in bin_ops:
                 right_operand = out_stack.pop()
                 left_operand = out_stack.pop()
-                out_stack.append(bin_ops[top_of_temp_stack](left_operand, right_operand))
+                out_stack.append(
+                    bin_ops[top_of_temp_stack](left_operand, right_operand)
+                )
             elif top_of_temp_stack == Special.LPAR:
                 self.error("Пропущена закрывающая скобка!")
             else:
@@ -338,7 +361,9 @@ class Parser:
                             self.error("Пропущена открывающая скобка!")
                     temp_stack.pop()
                     left_par_count -= 1
-                    if not isinstance(out_stack[-1], NodeLiteral) and not isinstance(out_stack[-1], NodePar):
+                    if not isinstance(out_stack[-1], NodeLiteral) and not isinstance(
+                        out_stack[-1], NodePar
+                    ):
                         out_stack.append(NodePar(out_stack.pop()))
                     self.next_token()
                 else:
@@ -351,7 +376,9 @@ class Parser:
                 else:
                     last_parsed_is_op = True
                     opp = get_op_priority(self.token)
-                    while len(temp_stack) > 0 and get_op_priority(temp_stack[-1]) >= opp:
+                    while (
+                        len(temp_stack) > 0 and get_op_priority(temp_stack[-1]) >= opp
+                    ):
                         apply_stack_op()
                     temp_stack.append(self.token)
                 self.next_token()
@@ -379,13 +406,17 @@ class Parser:
         call_args = self.args(end=[Special.COMMA, Special.NEWLINE], pars=True)
         ft = self.symtable.get_function(func_name)
         if ft.args_count != -1 and ft.args_count != len(call_args.arguments):
-            self.error(f"Функция {func_name} принимает {ft.args_count} {get_args_name_from_count(ft.args_count)}, а не {len(call_args.arguments)}")
+            self.error(
+                f"Функция {func_name} принимает {ft.args_count} {get_args_name_from_count(ft.args_count)}, а не {len(call_args.arguments)}"
+            )
 
         self.require(Special.RPAR, message="Пропущена закрывающая скобка!")
         self.next_token()
 
         if isinstance(ft, PredefinedFunction):
-            return NodeFuncCall(ft.predefined_name, call_args, ft.predefined_construction)
+            return NodeFuncCall(
+                ft.predefined_name, call_args, ft.predefined_construction
+            )
 
         return NodeFuncCall(func_name, call_args)
 
@@ -421,7 +452,7 @@ class Parser:
             Operators.LESS: NodeLess,
             Operators.LESS_EQUAL: NodeLessEqual,
             Operators.DOUBLE_EQUALS: NodeCompEqual,
-            Operators.NOT_EQUALS: NodeNotEqual
+            Operators.NOT_EQUALS: NodeNotEqual,
         }
 
         if self.token not in bin_operator:
@@ -448,7 +479,9 @@ class Parser:
                 self.next_token()
                 return NodeArray(args)
             case _:
-                self.error(f"Был получен токен {self.token}, а ожидался литерал или функция!")
+                self.error(
+                    f"Был получен токен {self.token}, а ожидался литерал или функция!"
+                )
 
     def variable(self):
         self.require(Special.ID, message="Ожидалась переменная!")
@@ -477,7 +510,9 @@ class Parser:
                 self.next_token()
             if not self.symtable.variable_exist(var.id):
                 self.error(f"Переменная {var.id} не была объявлена!")
-            if not self.symtable.compare_variable_type(var.id, Auto) and not self.symtable.compare_variable_type(var.id, Array):
+            if not self.symtable.compare_variable_type(
+                var.id, Auto
+            ) and not self.symtable.compare_variable_type(var.id, Array):
                 self.error(f"Переменная {var.id} не является массивом!")
             return NodeArrayCall(var.id, args)
         return var
