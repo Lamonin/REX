@@ -3,6 +3,10 @@ import re
 from rex.symbols import *
 
 
+class LexicalError(Exception):
+    pass
+
+
 class Transliterator:
     def __init__(self):
         self.num_pattern = re.compile(
@@ -30,16 +34,16 @@ class Token:
 
     def __str__(self):
         return (
-            f"{self.symbol.name}"
-            + (f":{self.value}" if self.value is not None else "")
-            + f":{self.pos[0]}:{self.pos[1]}"
+                f"{self.symbol.name}"
+                + (f":{self.value}" if self.value is not None else "")
+                + f":{self.pos[0]}:{self.pos[1]}"
         )
 
     def __eq__(self, other: "Token"):
         return (
-            self.symbol == other.symbol
-            and self.value == other.value
-            and self.pos == other.pos
+                self.symbol == other.symbol
+                and self.value == other.value
+                and self.pos == other.pos
         )
 
 
@@ -148,15 +152,15 @@ class Lexer:
             if not is_eof() and char() == quote:
                 self.token = Token(
                     Special.STR,
-                    self.code[start_pos : self.pos],
+                    self.code[start_pos: self.pos],
                     pos=(self.line, start_char_pos),
                 )
             else:
                 if code_len - self.pos < 10:
                     example = self.code[start_pos:-1]
                 else:
-                    example = self.code[start_pos : start_pos + 9]
-                raise Exception(f"Incorrect string literal: {example}...")
+                    example = self.code[start_pos: start_pos + 9]
+                raise LexicalError(f"Incorrect string literal: {example}...")
         # NUMBERS
         elif char().isdigit():
             start_pos = self.pos
@@ -172,7 +176,7 @@ class Lexer:
                     self.pos -= 2
                     self.token = Token(
                         Special.INTEGER,
-                        self.code[start_pos : self.pos + 1],
+                        self.code[start_pos: self.pos + 1],
                         pos=(self.line, start_char_pos),
                     )
                     return True
@@ -191,16 +195,16 @@ class Lexer:
                     next_char()
 
             if (
-                not is_eof()
-                and not char().isspace()
-                and char() not in ops
-                and char() not in [")", "]", "<", ">"]
+                    not is_eof()
+                    and not char().isspace()
+                    and char() not in ops
+                    and char() not in [")", "]", "<", ">"]
             ):
-                raise Exception(
+                raise LexicalError(
                     f"Incorrect number token: {self.code[start_pos:self.pos + 1]}"
                 )
 
-            potential_num: str = self.code[start_pos : self.pos]
+            potential_num: str = self.code[start_pos: self.pos]
             prev_char()
 
             if self.trnslt.is_num(potential_num):
@@ -208,7 +212,7 @@ class Lexer:
                     token_type, potential_num, pos=(self.line, start_char_pos)
                 )
             else:
-                raise Exception(
+                raise LexicalError(
                     f"Incorrect number token: {self.code[start_pos:self.pos + 1]}"
                 )
 
@@ -220,10 +224,10 @@ class Lexer:
             while not is_eof() and (char().isalnum() or char() in ["_", "?"]):
                 next_char()
 
-            potential_id = self.code[start_pos : self.pos]
+            potential_id = self.code[start_pos: self.pos]
 
             if not self.trnslt.is_id(potential_id):
-                raise Exception(f"Incorrect id token: {self.code[start_pos:self.pos]}")
+                raise LexicalError(f"Incorrect id token: {self.code[start_pos:self.pos]}")
 
             if potential_id in keywords:
                 self.token = Token(
@@ -235,6 +239,6 @@ class Lexer:
                 )
             prev_char()
         else:
-            raise Exception("Incorrect token: " + char())
+            raise LexicalError("Incorrect token: " + char())
 
         return True

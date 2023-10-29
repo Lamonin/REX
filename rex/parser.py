@@ -325,7 +325,7 @@ class Parser:
             top_of_temp_stack = temp_stack.pop()
 
             if isinstance(top_of_temp_stack, type) and issubclass(
-                top_of_temp_stack, NodeUnaryOp
+                    top_of_temp_stack, NodeUnaryOp
             ):
                 out_stack.append(top_of_temp_stack(out_stack.pop()))
             elif top_of_temp_stack in bin_ops:
@@ -362,7 +362,7 @@ class Parser:
                     temp_stack.pop()
                     left_par_count -= 1
                     if not isinstance(out_stack[-1], NodeLiteral) and not isinstance(
-                        out_stack[-1], NodePar
+                            out_stack[-1], NodePar
                     ):
                         out_stack.append(NodePar(out_stack.pop()))
                     self.next_token()
@@ -377,7 +377,7 @@ class Parser:
                     last_parsed_is_op = True
                     opp = get_op_priority(self.token)
                     while (
-                        len(temp_stack) > 0 and get_op_priority(temp_stack[-1]) >= opp
+                            len(temp_stack) > 0 and get_op_priority(temp_stack[-1]) >= opp
                     ):
                         apply_stack_op()
                     temp_stack.append(self.token)
@@ -511,7 +511,7 @@ class Parser:
             if not self.symtable.variable_exist(var.id):
                 self.error(f"Переменная {var.id} не была объявлена!")
             if not self.symtable.compare_variable_type(
-                var.id, Auto
+                    var.id, Auto
             ) and not self.symtable.compare_variable_type(var.id, Array):
                 self.error(f"Переменная {var.id} не является массивом!")
             return NodeArrayCall(var.id, args)

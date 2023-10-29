@@ -1,6 +1,10 @@
 from rex.types import *
 
 
+class SemanticError(Exception):
+    pass
+
+
 class NameSpace:
     def __init__(self):
         self.variables: dict[str, Variable] = dict()
@@ -47,7 +51,7 @@ class SymTable:
         self.name_spaces[-1].add_function(name, value)
 
     def compare_variable_type(
-        self, var_name: str, var_type: type(SemanticType)
+            self, var_name: str, var_type: type(SemanticType)
     ) -> bool:
         for ns in reversed(self.name_spaces):
             if var_name in ns.variables:
@@ -73,4 +77,4 @@ class SymTable:
         return False
 
     def error(self, msg: str, pos):
-        raise Exception(f"Ошибка семантического анализа ({pos[0]}, {pos[1]}): {msg}")
+        raise SemanticError(f"Ошибка семантического анализа ({pos[0]}, {pos[1]}): {msg}")
