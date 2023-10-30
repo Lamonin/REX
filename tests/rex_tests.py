@@ -394,7 +394,6 @@ class RexLexerTests(unittest.TestCase):
 
 class RexParserTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.lexer = Lexer()
         self.parser = Parser()
 
     def test_canParseAllRubyCode(self):
@@ -414,3 +413,10 @@ class RexParserTests(unittest.TestCase):
         self.parser.setup(code)
         parse_result = self.parser.parse()
         print(parse_result)
+
+    def test_cycles(self):
+        code = read_code('codes/cycles.rb')
+        self.parser.setup(code)
+        parse_result = self.parser.parse()
+        print(parse_result)
+        print(parse_result.generate())

@@ -247,6 +247,8 @@ class Parser:
                 )
                 self.require(Special.NEWLINE, Special.SEMICOLON, KeyWords.DO)
                 self.next_token()
+                if self.token == Special.NEWLINE:
+                    self.next_token()
                 block = self.block(KeyWords.END)
                 return NodeWhileBlock(condition, block, self.indent)
             case KeyWords.UNTIL:
@@ -256,6 +258,8 @@ class Parser:
                 )
                 self.require(Special.NEWLINE, Special.SEMICOLON, KeyWords.DO)
                 self.next_token()
+                if self.token == Special.NEWLINE:
+                    self.next_token()
                 block = self.block(KeyWords.END)
                 return NodeUntilBlock(condition, block, self.indent)
 
@@ -436,8 +440,9 @@ class Parser:
                 self.error(f"Неизвестный оператор присваивания {self.token}")
             if not self.symtable.variable_exist(lhs.id):
                 self.error(f"Переменная {lhs.id} не была объявлена!")
+            assign_op = assign_ops[self.token]
             self.next_token()
-            return assign_ops[self.token](lhs, self.arg())
+            return assign_op(lhs, self.arg())
 
     def bin_op(self, first):
         bin_operator: dict = {

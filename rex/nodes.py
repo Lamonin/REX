@@ -305,13 +305,13 @@ class NodeCycleStatement(Node):
 class NodeWhileBlock(NodeCycleStatement):
     def generate(self):
         indent_str = get_indent(self.indent)
-        return f"while ({self.condition.generate()})\n{indent_str}{{\n{self.block.generate(self.indent + 1)}{indent_str}}}"
+        return f"while ({self.condition.generate()}) {indent_str}{{\n{self.block.generate(self.indent + 1)}{indent_str}}}"
 
 
 class NodeUntilBlock(NodeCycleStatement):
     def generate(self):
         indent_str = get_indent(self.indent)
-        return f"while !({self.condition.generate()})\n{indent_str}{{\n{self.block.generate(self.indent + 1)}{indent_str}}}"
+        return f"while !({self.condition.generate()}) {indent_str}{{\n{self.block.generate(self.indent + 1)}{indent_str}}}"
 
 
 class NodeForBlock(Node):
