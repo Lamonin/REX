@@ -1,4 +1,6 @@
+import operator
 from rex.symbols import Special
+from rex.misc import try_to_num, convert_float_to_int
 
 
 def get_indent(indent: int):
@@ -140,7 +142,10 @@ class NodePar(Node):
         self.expr = expr
 
     def generate(self):
-        return f"({self.expr.generate()})"
+        expr = self.expr.generate()
+        if try_to_num(expr)[0]:
+            return f"{expr}"
+        return f"({expr})"
 
 
 class NodeBinOperator(Node):
@@ -149,34 +154,45 @@ class NodeBinOperator(Node):
         self.right = right
 
 
-class NodePlus(NodeBinOperator):
+class NodeNumericBinOperator(NodeBinOperator):
+    def calc(self, op_symbol: str, op: operator):
+        left = self.left.generate()
+        right = self.right.generate()
+        left_num = try_to_num(left)
+        right_num = try_to_num(right)
+        if left_num[0] and right_num[0]:
+            return f"{convert_float_to_int(op(left_num[1], right_num[1]))}"
+        return f"{left} {op_symbol} {right}"
+
+
+class NodePlus(NodeNumericBinOperator):
     def generate(self):
-        return f"{self.left.generate()} + {self.right.generate()}"
+        return self.calc("+", operator.add)
 
 
-class NodeMinus(NodeBinOperator):
+class NodeMinus(NodeNumericBinOperator):
     def generate(self):
-        return f"{self.left.generate()} - {self.right.generate()}"
+        return self.calc("-", operator.sub)
 
 
-class NodeAsterisk(NodeBinOperator):
+class NodeAsterisk(NodeNumericBinOperator):
     def generate(self):
-        return f"{self.left.generate()} * {self.right.generate()}"
+        return self.calc("*", operator.mul)
 
 
-class NodeSlash(NodeBinOperator):
+class NodeSlash(NodeNumericBinOperator):
     def generate(self):
-        return f"{self.left.generate()} / {self.right.generate()}"
+        return self.calc("/", operator.truediv)
 
 
-class NodeMod(NodeBinOperator):
+class NodeMod(NodeNumericBinOperator):
     def generate(self):
-        return f"{self.left.generate()} * {self.right.generate()}"
+        return self.calc("%%", operator.mod)
 
 
-class NodeDegree(NodeBinOperator):
+class NodeDegree(NodeNumericBinOperator):
     def generate(self):
-        return f"{self.left.generate()} ** {self.right.generate()}"
+        return self.calc("^", operator.pow)
 
 
 class NodeGreater(NodeBinOperator, NodeLogical):

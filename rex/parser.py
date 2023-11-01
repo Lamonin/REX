@@ -358,7 +358,8 @@ class Parser:
                             f"{get_node_without_par(right_operand).__class__.__name__}"
                         )
 
-                # TODO Добавить проверку на операторы
+                # TODO Добавить проверку соответствия типов у числовых операторов
+                # TODO Попробовать оптимизировать логические операторы
 
                 out_stack.append(bin_ops[top_of_temp_stack](left_operand, right_operand))
             elif top_of_temp_stack == Special.LPAR:
