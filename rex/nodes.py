@@ -110,7 +110,8 @@ class NodeLogical:
 
 
 class NodeBool(NodeLiteral, NodeLogical):
-    pass
+    def generate(self):
+        return str(self.value).upper()
 
 
 class NodeInteger(NodeLiteral):

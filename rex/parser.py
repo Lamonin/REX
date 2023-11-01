@@ -19,6 +19,8 @@ bin_ops = {
     Operators.LESS_EQUAL: NodeLessEqual,
     Operators.GREATER_EQUAL: NodeGreaterEqual,
     Special.DOUBLE_DOT: NodeDoubleDot,
+    KeyWords.AND: NodeAnd,
+    KeyWords.OR: NodeOr
 }
 
 unary_ops = {
@@ -39,6 +41,12 @@ assign_ops = {
 
 class ParsingError(Exception):
     pass
+
+
+def get_node_without_par(node) -> Node:
+    while isinstance(node, NodePar):
+        node = node.expr
+    return node
 
 
 class Parser:
@@ -69,6 +77,7 @@ class Parser:
             self.error(f"Ожидается один из токенов {args}, получен токен {self.token}!")
 
     def is_node_logical(self, node: Node) -> bool:
+        node = get_node_without_par(node)
         if not issubclass(type(node), NodeLogical):
             if isinstance(node, NodeFuncCall):
                 rt = self.symtable.get_function(node.id).return_type
@@ -172,11 +181,8 @@ class Parser:
     def if_block(self) -> Node:
         condition = self.arg(end=[KeyWords.THEN, Special.NEWLINE, Special.SEMICOLON])
 
-        t = condition
-        while isinstance(t, NodePar):
-            t = t.expr
-        if not self.is_node_logical(t):
-            self.error(f"Ожидалось логическое выражение, а получено {type(t).__name__}")
+        if not self.is_node_logical(condition):
+            self.error(f"Ожидалось логическое выражение, а получено {type(condition).__name__}")
 
         self.require(KeyWords.THEN, Special.NEWLINE, Special.SEMICOLON)
         self.next_token()
@@ -312,32 +318,49 @@ class Parser:
             match op:
                 case Special.LPAR:
                     return 0
-                case Operators.DOUBLE_EQUALS | Operators.NOT_EQUALS | Operators.LESS | Operators.GREATER | Operators.LESS_EQUAL | Operators.GREATER_EQUAL:
+                case KeyWords.AND | KeyWords.OR:
                     return 1
-                case Operators.PLUS | Operators.MINUS:
+                case Operators.DOUBLE_EQUALS | Operators.NOT_EQUALS | Operators.LESS | Operators.GREATER | Operators.LESS_EQUAL | Operators.GREATER_EQUAL:
                     return 2
-                case Operators.ASTERISK | Operators.SLASH | Operators.MOD | Special.DOUBLE_DOT:
+                case Operators.PLUS | Operators.MINUS:
                     return 3
-                case Operators.DEGREE:
+                case Operators.ASTERISK | Operators.SLASH | Operators.MOD | Special.DOUBLE_DOT:
                     return 4
+                case Operators.DEGREE:
+                    return 5
                 case _:
                     if isinstance(op, type) and issubclass(op, NodeUnaryOp):
-                        return 4
+                        return 5
             self.error(f"Некорректный элемент математического выражения {op}")
 
         def apply_stack_op():
             top_of_temp_stack = temp_stack.pop()
 
-            if isinstance(top_of_temp_stack, type) and issubclass(
-                    top_of_temp_stack, NodeUnaryOp
-            ):
-                out_stack.append(top_of_temp_stack(out_stack.pop()))
+            if isinstance(top_of_temp_stack, type) and issubclass(top_of_temp_stack, NodeUnaryOp):
+                top_of_out_stack = out_stack.pop()
+                if type(top_of_out_stack) is top_of_temp_stack:
+                    out_stack.append(top_of_out_stack.right)
+                else:
+                    out_stack.append(top_of_temp_stack(top_of_out_stack))
             elif top_of_temp_stack in bin_ops:
                 right_operand = out_stack.pop()
                 left_operand = out_stack.pop()
-                out_stack.append(
-                    bin_ops[top_of_temp_stack](left_operand, right_operand)
-                )
+
+                if top_of_temp_stack in [KeyWords.AND, KeyWords.OR]:
+                    if not self.is_node_logical(left_operand):
+                        self.error(
+                            f"Ожидалось логическое значение, а получено "
+                            f"{get_node_without_par(left_operand).__class__.__name__}"
+                        )
+                    if not self.is_node_logical(right_operand):
+                        self.error(
+                            f"Ожидалось логическое значение, а получено "
+                            f"{get_node_without_par(right_operand).__class__.__name__}"
+                        )
+
+                # TODO Добавить проверку на операторы
+
+                out_stack.append(bin_ops[top_of_temp_stack](left_operand, right_operand))
             elif top_of_temp_stack == Special.LPAR:
                 self.error("Пропущена закрывающая скобка!")
             else:
@@ -390,7 +413,12 @@ class Parser:
         while len(temp_stack) > 0:
             apply_stack_op()
 
-        return out_stack.pop() if len(out_stack) else None
+        arg = out_stack.pop() if len(out_stack) else None
+
+        while isinstance(arg, NodePar):
+            arg = arg.expr
+
+        return arg
 
     def args(self, end=None, pars=False):
         if end is None:

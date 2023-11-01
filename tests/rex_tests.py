@@ -420,3 +420,10 @@ class RexParserTests(unittest.TestCase):
         parse_result = self.parser.parse()
         print(parse_result)
         print(parse_result.generate())
+
+    def test_variables(self):
+        code = read_code('codes/variables.rb')
+        self.parser.setup(code)
+        parse_result = self.parser.parse()
+        print(parse_result)
+
