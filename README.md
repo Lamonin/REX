@@ -2,26 +2,37 @@
 
 **Содержание:**
 <!-- TOC -->
-* [Описание тестов](#описание-тестов)
-  * [1. numberOperators](#1-numberoperators)
-  * [2. numberTokens](#2-numbertokens)
-  * [3. keywordTokens](#3-keywordtokens)
-  * [4. bracketsTokens](#4-bracketstokens)
-  * [5. logicalOperators](#5-logicaloperators)
-  * [6. specialTokens](#6-specialtokens)
-  * [7. ignoreWhitespace](#7-ignorewhitespace)
-  * [8. emptyInput](#8-emptyinput)
-  * [9. complexCode](#9-complexcode)
-  * [10. tokensPositioning](#10-tokenspositioning)
-  * [11. Тесты на выявление ошибок](#11-тесты-на-выявление-ошибок)
+* [REX - simple Ruby lexer](#rex---simple-ruby-lexer)
+* [Оптимизация транслируемого кода](#оптимизация-транслируемого-кода)
+* [Тесты](#тесты)
+  * [Лексер](#лексер)
+    * [1. numberOperators](#1-numberoperators)
+    * [2. numberTokens](#2-numbertokens)
+    * [3. keywordTokens](#3-keywordtokens)
+    * [4. bracketsTokens](#4-bracketstokens)
+    * [5. logicalOperators](#5-logicaloperators)
+    * [6. specialTokens](#6-specialtokens)
+    * [7. ignoreWhitespace](#7-ignorewhitespace)
+    * [8. emptyInput](#8-emptyinput)
+    * [9. complexCode](#9-complexcode)
+    * [10. tokensPositioning](#10-tokenspositioning)
+    * [11. Тесты на выявление ошибок](#11-тесты-на-выявление-ошибок)
 <!-- TOC -->
 
-## Описание тестов
+# Оптимизация транслируемого кода
+В процессе трансляции, Rex выполняет следующие оптимизации кода:
+1. Примитивы в математических выражениях вычисляются на этапе трансляции. Например, `3 * 2 - 4` заменяется на `2`
+2. Повторяющиеся унарные операции упрощаются. Например, `--1` заменяется на `1`, а `---1` на `-1`
+3. 
+4. Все операции, расположенные после `return` - игнорируются и не выводятся в транслируемый код. Если на верхнем уровне встречен оператор `return`, то процесс парсинга завершается, т.к. нижеследующие операторы уже не имеют смысла.
+5. Содержимое `return` верхнего уровня - игнорируется, т.к. не имеет смысла.
+
+# Тесты
+## Лексер
 
 ### 1. numberOperators
 
-Задача теста, проверить,
-что лексер правильно распознает токены операторов над числами.
+Задача теста, проверить, что лексер правильно распознает токены числовых операторов.
 
 В качестве входных данных рассматривается следующий код на языке Ruby:
 

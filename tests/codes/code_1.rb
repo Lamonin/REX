@@ -1,5 +1,6 @@
 a = 10
-b = (20 / (3 + 4))**12 - 3**11
+b = (1 + 2 + 4 + 5 - 6 * 2 / 4) / 2
+
 
 # define a method to sum values
 
@@ -44,14 +45,21 @@ end
 
 def boolfunc(a)
     return a > 10
+    puts("Hello")
 end
 
 def boolfunc1(a)
     return boolfunc(10)
+
+    puts("Hello")
+    puts("Hello")
 end
 
 def boolfunc2(a)
     return boolfunc1(20)
+    puts("Hello")
+    puts("Hello")
+    puts("Hello")
 end
 
 if boolfunc2(20) then
@@ -62,4 +70,12 @@ puts(10)
 
 foo(1, 2)
 
+a = 12 ** 4
+
+return "aboba"
+
 a = readline(b)
+
+b = (((((((((20+ 30)))))))))
+
+c = not not a

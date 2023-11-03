@@ -1,3 +1,5 @@
+from rex.nodes import Node, NodePar
+
 
 def get_args_name_from_count(c):
     cc = c % 10
@@ -7,6 +9,12 @@ def get_args_name_from_count(c):
         return "аргумента"
     else:
         return "аргументов"
+
+
+def get_node_without_par(node) -> Node:
+    while isinstance(node, NodePar):
+        node = node.expr
+    return node
 
 
 def try_to_num(value: str) -> (bool, int | float | None):

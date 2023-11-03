@@ -1,5 +1,5 @@
 from rex.lexer import Lexer
-from rex.misc import get_args_name_from_count
+from rex.misc import get_args_name_from_count, get_node_without_par
 from rex.types import *
 from rex.nodes import *
 from rex.symbols import *
@@ -41,12 +41,6 @@ assign_ops = {
 
 class ParsingError(Exception):
     pass
-
-
-def get_node_without_par(node) -> Node:
-    while isinstance(node, NodePar):
-        node = node.expr
-    return node
 
 
 class Parser:
@@ -98,6 +92,7 @@ class Parser:
         statements = []
         while self.token != Special.EOF:
             statement = self.statement()
+
             if statement:
                 statements.append(statement)
                 if self.token != Special.EOF:
@@ -106,6 +101,11 @@ class Parser:
                         Special.SEMICOLON,
                         message="Ожидался конец строки!",
                     )
+
+            if isinstance(statement, NodeReturn):
+                statement.value = None  # Return value has no meaning
+                break  # There is no point in parsing further after return
+
             self.next_token()
 
         return NodeProgram(statements)
@@ -117,15 +117,25 @@ class Parser:
         if initialize_function:
             initialize_function()
 
+        is_return_statement_appeared = False
+
         statements = []
         while self.token not in args:
             statement = self.statement()
+
             if statement:
-                statements.append(statement)
+                if not is_return_statement_appeared:  # Ignore statements after return statement
+                    statements.append(statement)
+
                 self.require(
                     Special.NEWLINE, Special.SEMICOLON, message="Ожидался конец строки!"
                 )
+
             self.next_token()
+
+            if isinstance(statement, NodeReturn):
+                is_return_statement_appeared = True
+
         if skip_last:
             self.next_token()
         self.symtable.dispose_local_name_space(self.lexer.token.pos)
