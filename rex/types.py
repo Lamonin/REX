@@ -1,5 +1,6 @@
 class SemanticType:
-    pass
+    def __init__(self):
+        self.number_of_uses = 0
 
 
 class Variable(SemanticType):
@@ -16,6 +17,7 @@ class Auto(Variable):
 
 class Function(SemanticType):
     def __init__(self, args_count=0, return_type=None):
+        super().__init__()
         self.args_count = args_count
         self.return_type = return_type
 

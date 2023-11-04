@@ -64,6 +64,12 @@ class SymTable:
                 return True
         return False
 
+    def get_variable(self, name: str) -> Variable | None:
+        for ns in reversed(self.name_spaces):
+            if name in ns.variables:
+                return ns.variables[name]
+        return None
+
     def get_function(self, name: str) -> Function | None:
         for ns in reversed(self.name_spaces):
             if name in ns.functions:

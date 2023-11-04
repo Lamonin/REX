@@ -58,6 +58,9 @@ class Node:
     def generate(self):
         pass
 
+    def iterate(self) -> list:
+        return [self]
+
 
 class NodeProgram(Node):
     def __init__(self, child):
@@ -68,6 +71,12 @@ class NodeProgram(Node):
         for i in self.child:
             code += f"{i.generate()}\n"
         return code
+
+    def iterate(self) -> list:
+        iterate_result = list()
+        for child in self.child:
+            iterate_result.extend(child.iterate())
+        return iterate_result
 
 
 class NodeBlock(Node):
@@ -85,12 +94,19 @@ class NodeBlock(Node):
             code += f"{self.statements.generate(indent)}"
         return code
 
+    def iterate(self) -> list:
+        iterate_result = list()
+        for stmt in self.statements:
+            iterate_result.extend(stmt.iterate())
+        return iterate_result
+
 
 class NodeNewLine(Node):
     def generate(self):
         return ""
 
 
+# TODO: Не используется, возможно стоит удалить
 class NodeStatement(Node):
     def __init__(self, statement):
         self.statement = statement
@@ -107,15 +123,6 @@ class NodeLiteral(Node):
         return str(self.value)
 
 
-class NodeLogical:
-    pass
-
-
-class NodeBool(NodeLiteral, NodeLogical):
-    def generate(self):
-        return str(self.value).upper()
-
-
 class NodeInteger(NodeLiteral):
     pass
 
@@ -127,6 +134,15 @@ class NodeFloat(NodeLiteral):
 class NodeString(NodeLiteral):
     def generate(self):
         return f'"{self.value}"'
+
+
+class NodeLogical:
+    pass
+
+
+class NodeBool(NodeLiteral, NodeLogical):
+    def generate(self):
+        return str(self.value).upper()
 
 
 class NodeVariable(Node):
@@ -147,11 +163,19 @@ class NodePar(Node):
             return f"{expr}"
         return f"({expr})"
 
+    def iterate(self) -> list:
+        return self.expr.iterate()
 
+
+# region Binary Operators
 class NodeBinOperator(Node):
     def __init__(self, left, right):
         self.left = left
         self.right = right
+
+    def iterate(self) -> list:
+        iterate_result = [item for sublist in [self.left.iterate(), self.right.iterate()] for item in sublist]
+        return iterate_result
 
 
 class NodeNumericBinOperator(NodeBinOperator):
@@ -225,6 +249,16 @@ class NodeNotEqual(NodeBinOperator, NodeLogical):
         return f"{self.left.generate()} != {self.right.generate()}"
 
 
+class NodeAnd(NodeBinOperator):
+    def generate(self):
+        return f"{self.left.generate()} & {self.right.generate()}"
+
+
+class NodeOr(NodeBinOperator):
+    def generate(self):
+        return f"{self.left.generate()} | {self.right.generate()}"
+
+
 class NodeDoubleDot(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()}:{self.right.generate()}"
@@ -264,6 +298,8 @@ class NodeDegreeEquals(NodeBinOperator):
     def generate(self):
         return f"{self.left.generate()} <- {self.left.generate()} ** {self.right.generate()}"
 
+# endregion
+
 
 class NodePrimary(Node):
     def __init__(self, value):
@@ -281,6 +317,11 @@ class NodeIfStatement(Node):
     def generate(self, indent=0):
         indent_str = get_indent(indent)
         return f"if ({self.condition.generate()}) {{\n{self.block.generate(indent + 1)}{indent_str}}}"
+
+    def iterate(self) -> list:
+        result = self.condition.iterate()
+        result.extend(self.block.iterate())
+        return result
 
 
 class NodeElsIfStatement(NodeIfStatement):
@@ -311,12 +352,25 @@ class NodeIfBlock(Node):
             code += f" {self.else_block.generate(self.indent)}"
         return code
 
+    def iterate(self) -> list:
+        result = self.if_block.iterate()
+        if self.elsif != "":
+            result.extend(self.elsif.iterate())
+        if self.else_block != "":
+            result.extend(self.else_block.iterate())
+        return result
+
 
 class NodeCycleStatement(Node):
     def __init__(self, condition, block, indent):
         self.condition = condition
         self.block = block
         self.indent = indent
+
+    def iterate(self) -> list:
+        result = self.condition.iterate()
+        result.extend(self.block.iterate())
+        return result
 
 
 class NodeWhileBlock(NodeCycleStatement):
@@ -342,10 +396,18 @@ class NodeForBlock(Node):
         indent_str = get_indent(self.indent)
         return f"for ({self.iter.generate()} in {self.iterable.generate()}) {{\n{self.block.generate(self.indent)}{indent_str}}}"
 
+    def iterate(self) -> list:
+        result = self.iterable.iterate()
+        result.extend(self.block.iterate())
+        return result
+
 
 class NodeUnaryOp(Node):
     def __init__(self, right):
         self.right = right
+
+    def iterate(self) -> list:
+        return self.right.iterate()
 
 
 class NodeUnaryMinus(NodeUnaryOp):
@@ -370,6 +432,12 @@ class NodeArgs(Node):
     def generate(self):
         return f"{', '.join([a.generate() for a in self.arguments])}"
 
+    def iterate(self) -> list:
+        result = []
+        for argument in self.arguments:
+            result.extend(argument.iterate())
+        return result
+
 
 class NodeParams(Node):
     def __init__(self, params):
@@ -380,6 +448,12 @@ class NodeParams(Node):
             out = [p.generate() for p in self.params]
             return "" if len(out) == 0 else ", ".join(out)
         return self.params.generate()
+
+    def iterate(self) -> list:
+        result = []
+        for param in self.params:
+            result.extend(param.iterate())
+        return result
 
 
 class NodeDeclareParams(NodeParams):
@@ -406,6 +480,9 @@ class NodeFuncDec(NodeFunc):
         indent_str = get_indent(self.indent)
         return f"{self.id} <- function({self.params.generate()}) {{\n{self.block.generate(self.indent + 1)}{indent_str}}}"
 
+    def iterate(self) -> list:
+        return self.block.iterate()
+
 
 class NodeFuncCall(NodeFunc):
     def __init__(self, id, params, predefined_construction=None):
@@ -419,6 +496,9 @@ class NodeFuncCall(NodeFunc):
             )
         return f"{self.id}({self.params.generate()})"
 
+    def iterate(self) -> list:
+        return [self] + self.params.iterate()
+
 
 class NodeReturn(Node):
     def __init__(self, value: Node = None):
@@ -427,6 +507,9 @@ class NodeReturn(Node):
     def generate(self):
         return f"return{' ' + self.value.generate() if self.value is not None else ''}"
 
+    def iterate(self) -> list:
+        return self.value.iterate() if self.value is not None else super().iterate()
+
 
 class NodeArray(Node):
     def __init__(self, args=None):
@@ -434,6 +517,9 @@ class NodeArray(Node):
 
     def generate(self):
         return str(self.args) if self.args is not None else "[]"
+
+    def iterate(self) -> list:
+        return self.args.iterate() if self.args is not None else super().iterate()
 
 
 class NodeArrayCall(Node):
@@ -445,6 +531,12 @@ class NodeArrayCall(Node):
         args_str = "".join([f"[{a.generate()}]" for a in self.args])
         return f"{self.id}{args_str}"
 
+    def iterate(self) -> list:
+        result = list()
+        for a in self.args:
+            result.extend(a.iterate())
+        return result
+
 
 class NodeNext(Node):
     def generate(self):
@@ -454,13 +546,3 @@ class NodeNext(Node):
 class NodeBreak(Node):
     def generate(self):
         return "break"
-
-
-class NodeAnd(NodeBinOperator):
-    def generate(self):
-        return f"{self.left.generate()} & {self.right.generate()}"
-
-
-class NodeOr(NodeBinOperator):
-    def generate(self):
-        return f"{self.left.generate()} | {self.right.generate()}"

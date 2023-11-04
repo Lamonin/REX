@@ -1,5 +1,5 @@
 from rex.lexer import Lexer
-from rex.misc import get_args_name_from_count, get_node_without_par
+from rex.misc import get_args_name_from_count
 from rex.types import *
 from rex.nodes import *
 from rex.symbols import *
@@ -37,6 +37,12 @@ assign_ops = {
     Operators.MOD_EQUALS: NodeModEquals,
     Operators.DEGREE_EQUALS: NodeDegreeEquals,
 }
+
+
+def get_node_without_par(node) -> Node:
+    while isinstance(node, NodePar):
+        node = node.expr
+    return node
 
 
 class ParsingError(Exception):
@@ -108,6 +114,8 @@ class Parser:
 
             self.next_token()
 
+        self.optimize_statements(statements)
+
         return NodeProgram(statements)
 
     def block(self, *args: Enum, skip_last=True, initialize_function=None) -> NodeBlock:
@@ -138,9 +146,62 @@ class Parser:
 
         if skip_last:
             self.next_token()
+
+        # Optimize block statements
+        self.optimize_statements(statements)
+
         self.symtable.dispose_local_name_space(self.lexer.token.pos)
         self.indent -= 1
+
         return NodeBlock(statements, self.indent + 1)
+
+    def optimize_statements(self, statements):
+        stmts_to_remove = []
+
+        for stmt in reversed(statements):
+            if isinstance(stmt, NodeEquals):
+                if self.symtable.get_variable(stmt.left.id).number_of_uses == 0:
+                    right_nodes = stmt.right.iterate()
+                    for right_node in right_nodes:
+                        if isinstance(right_node, NodeVariable):
+                            self.symtable.get_variable(right_node.id).number_of_uses -= 1
+                        elif isinstance(right_node, NodeFuncCall):
+                            self.symtable.get_function(right_node.id).number_of_uses -= 1
+                    stmts_to_remove.append(stmt)
+            elif isinstance(stmt, NodeFuncDec):
+                if self.symtable.get_function(stmt.id).number_of_uses == 0:
+                    right_nodes = stmt.iterate()
+                    for right_node in right_nodes:
+                        if isinstance(right_node, NodeVariable):
+                            self.symtable.get_variable(right_node.id).number_of_uses -= 1
+                        elif isinstance(right_node, NodeFuncCall):
+                            self.symtable.get_function(right_node.id).number_of_uses -= 1
+                    stmts_to_remove.append(stmt)
+
+        # Apply optimizations for node-tree
+        for stmt in stmts_to_remove:
+            statements.remove(stmt)
+
+        # Trim newlines in beginning and end of block
+        stmts_to_remove.clear()
+        for stmt in statements:
+            if not isinstance(stmt, NodeNewLine):
+                break
+            stmts_to_remove.append(stmt)
+
+        # Apply trim for node-tree
+        for stmt in stmts_to_remove:
+            statements.remove(stmt)
+
+        stmts_to_remove.clear()
+        for stmt in reversed(statements):
+            if not isinstance(stmt, NodeNewLine):
+                break
+            stmts_to_remove.append(stmt)
+
+        # Apply trim for node-tree
+        for stmt in stmts_to_remove:
+            statements.remove(stmt)
 
     def statement(self) -> Node | None:
         match self.token:
@@ -314,6 +375,29 @@ class Parser:
             return NodeFuncDec(func_id, params, block, self.indent)
         self.error("Ожидалось объявление функции!")
 
+    def function_call(self, func_name):
+        self.next_token()
+
+        call_args = self.args(end=[Special.COMMA, Special.NEWLINE], pars=True)
+
+        f = self.symtable.get_function(func_name)
+        if f.args_count != -1 and f.args_count != len(call_args.arguments):
+            self.error(
+                f"Функция {func_name} принимает {f.args_count} {get_args_name_from_count(f.args_count)}, а не {len(call_args.arguments)}"
+            )
+
+        self.require(Special.RPAR, message="Пропущена закрывающая скобка!")
+        self.next_token()
+
+        f.number_of_uses += 1
+
+        if isinstance(f, PredefinedFunction):
+            return NodeFuncCall(
+                f.predefined_name, call_args, f.predefined_construction
+            )
+
+        return NodeFuncCall(func_name, call_args)
+
     def return_statement(self) -> Node:
         if self.token in [Special.NEWLINE, Special.SEMICOLON]:
             return NodeReturn()
@@ -443,26 +527,6 @@ class Parser:
                 args.append(self.arg(end=end, pars=pars))
         return NodeArgs(args)
 
-    def function_call(self, func_name):
-        self.next_token()
-
-        call_args = self.args(end=[Special.COMMA, Special.NEWLINE], pars=True)
-        ft = self.symtable.get_function(func_name)
-        if ft.args_count != -1 and ft.args_count != len(call_args.arguments):
-            self.error(
-                f"Функция {func_name} принимает {ft.args_count} {get_args_name_from_count(ft.args_count)}, а не {len(call_args.arguments)}"
-            )
-
-        self.require(Special.RPAR, message="Пропущена закрывающая скобка!")
-        self.next_token()
-
-        if isinstance(ft, PredefinedFunction):
-            return NodeFuncCall(
-                ft.predefined_name, call_args, ft.predefined_construction
-            )
-
-        return NodeFuncCall(func_name, call_args)
-
     def assign_op(self, lhs):
         if self.token == Operators.EQUALS:
             self.next_token()
@@ -563,11 +627,15 @@ class Parser:
 
     def rhs(self):
         lhs = self.lhs()
+
         if isinstance(lhs, NodeVariable) and self.token == Special.LPAR:
             return self.function_call(lhs.id)
-        else:
-            if not self.symtable.variable_exist(lhs.id):
-                self.error(f"Переменная {lhs.id} не была объявлена!")
+
+        if not self.symtable.variable_exist(lhs.id):
+            self.error(f"Переменная {lhs.id} не была объявлена!")
+
+        self.symtable.get_variable(lhs.id).number_of_uses += 1
+
         return lhs
 
     def literal(self):
