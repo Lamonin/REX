@@ -61,6 +61,7 @@ class Parser:
         self.lexer.setup(code)
         self.lexer.next_token()
         self.symtable = SymTable()
+        self.symtable.get_pos = lambda: self.lexer.token.pos
         self.indent = 0
         self.token = self.lexer.token.symbol
 
@@ -93,7 +94,7 @@ class Parser:
 
     def parse(self) -> Node:
         if self.token == Special.EOF:
-            self.error("Empty file!")
+            self.error("Пустой файл!")
 
         statements = []
         while self.token != Special.EOF:
@@ -119,7 +120,7 @@ class Parser:
         return NodeProgram(statements)
 
     def block(self, *args: Enum, skip_last=True, initialize_function=None) -> NodeBlock:
-        self.symtable.create_local_name_space()
+        self.symtable.create_local_namespace()
         self.indent += 1
 
         if initialize_function:
@@ -150,7 +151,7 @@ class Parser:
         # Optimize block statements
         self.optimize_statements(statements)
 
-        self.symtable.dispose_local_name_space(self.lexer.token.pos)
+        self.symtable.dispose_local_namespace()
         self.indent -= 1
 
         return NodeBlock(statements, self.indent + 1)
@@ -377,24 +378,17 @@ class Parser:
 
     def function_call(self, func_name):
         self.next_token()
-
         call_args = self.args(end=[Special.COMMA, Special.NEWLINE], pars=True)
-
-        f = self.symtable.get_function(func_name)
-        if f.args_count != -1 and f.args_count != len(call_args.arguments):
-            self.error(
-                f"Функция {func_name} принимает {f.args_count} {get_args_name_from_count(f.args_count)}, а не {len(call_args.arguments)}"
-            )
-
         self.require(Special.RPAR, message="Пропущена закрывающая скобка!")
         self.next_token()
 
+        self.symtable.check_function_arguments_count(func_name, len(call_args.arguments))
+
+        f = self.symtable.get_function(func_name)
         f.number_of_uses += 1
 
         if isinstance(f, PredefinedFunction):
-            return NodeFuncCall(
-                f.predefined_name, call_args, f.predefined_construction
-            )
+            return NodeFuncCall(f.predefined_name, call_args, f.predefined_construction)
 
         return NodeFuncCall(func_name, call_args)
 
@@ -541,8 +535,7 @@ class Parser:
         else:
             if self.token not in assign_ops:
                 self.error(f"Неизвестный оператор присваивания {self.token}")
-            if not self.symtable.variable_exist(lhs.id):
-                self.error(f"Переменная {lhs.id} не была объявлена!")
+            self.symtable.check_variable_presence(lhs.id)
             assign_op = assign_ops[self.token]
             self.next_token()
             return assign_op(lhs, self.arg())
@@ -616,12 +609,7 @@ class Parser:
                 args.append(idx)
                 self.require(Special.RBR)
                 self.next_token()
-            if not self.symtable.variable_exist(var.id):
-                self.error(f"Переменная {var.id} не была объявлена!")
-            if not self.symtable.compare_variable_type(
-                    var.id, Auto
-            ) and not self.symtable.compare_variable_type(var.id, Array):
-                self.error(f"Переменная {var.id} не является массивом!")
+            self.symtable.check_variable_is_array(var.id)
             return NodeArrayCall(var.id, args)
         return var
 
@@ -631,9 +619,7 @@ class Parser:
         if isinstance(lhs, NodeVariable) and self.token == Special.LPAR:
             return self.function_call(lhs.id)
 
-        if not self.symtable.variable_exist(lhs.id):
-            self.error(f"Переменная {lhs.id} не была объявлена!")
-
+        self.symtable.check_variable_presence(lhs.id)
         self.symtable.get_variable(lhs.id).number_of_uses += 1
 
         return lhs
