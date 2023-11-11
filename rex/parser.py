@@ -1,5 +1,4 @@
 from rex.lexer import Lexer
-from rex.misc import get_args_name_from_count
 from rex.types import *
 from rex.nodes import *
 from rex.symbols import *
@@ -477,8 +476,11 @@ class Parser:
                             self.error("Пропущена открывающая скобка!")
                     temp_stack.pop()
                     left_par_count -= 1
-                    if not isinstance(out_stack[-1], NodeLiteral) and not isinstance(
-                            out_stack[-1], NodePar
+                    if (
+                        not isinstance(out_stack[-1], NodeLiteral)
+                        and not isinstance(out_stack[-1], NodeVariable)
+                        and not isinstance(out_stack[-1], NodeFuncCall)
+                        and not isinstance(out_stack[-1], NodePar)
                     ):
                         out_stack.append(NodePar(out_stack.pop()))
                     self.next_token()
