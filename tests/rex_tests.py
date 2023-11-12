@@ -640,3 +640,78 @@ class RexGeneratorTests(unittest.TestCase):
         parse_res = self.parser.parse()
         gen_res = parse_res.generate()
         self.assertEqual(gen_res, translated_r_code)
+
+    def test_optimization_extra_unary_operator(self):
+        code = '''
+            a = --10
+            b = ---1
+            c = +++1
+            puts(a + b + c)
+            if not not not true then
+                puts(a + b)
+            end
+        '''
+
+        translated_r_code = (
+            "a <- 10\n"
+            "b <- -1\n"
+            "c <- +1\n"
+            "print(a + b + c)\n"
+            "if (!TRUE) {\n"
+            "\tprint(a + b)\n"
+            "}\n"
+        )
+
+        self.parser.setup(code)
+        parse_res = self.parser.parse()
+        gen_res = parse_res.generate()
+        self.assertEqual(gen_res, translated_r_code)
+
+    def test_optimization_unused_variables_and_functions(self):
+        code = '''
+            a = 10
+            b = 20
+            def foo()
+              return a
+            end
+            c = a + b
+            puts(a)
+        '''
+
+        translated_r_code = (
+            "a <- 10\n"
+            "print(a)\n"
+        )
+
+        self.parser.setup(code)
+        parse_res = self.parser.parse()
+        gen_res = parse_res.generate()
+        self.assertEqual(gen_res, translated_r_code)
+
+    def test_optimization_return_statement(self):
+        code = '''
+            def foo()
+                puts("Foo called")
+                return
+                puts("Foo try called")
+            end
+            foo()
+            return false
+            a = 10
+            b = 20
+            puts(a + b)
+        '''
+
+        translated_r_code = (
+            "foo <- function() {\n"
+            '\tprint("Foo called")\n'
+            "\treturn\n"
+            "}\n"
+            "foo()\n"
+            "return\n"
+        )
+
+        self.parser.setup(code)
+        parse_res = self.parser.parse()
+        gen_res = parse_res.generate()
+        self.assertEqual(gen_res, translated_r_code)
