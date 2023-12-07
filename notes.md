@@ -18,4 +18,7 @@
 
 ~~Возможно добавить в rhs проверку на существование переменной~~
 
-Нужно добавить классы ошибок: LexerException, ParserException, SemanticException
+~~Нужно добавить классы ошибок: LexerException, ParserException, SemanticException~~
+
+Проблемы:
+   - При оптимизации бесполезные присваивания не удаляются.

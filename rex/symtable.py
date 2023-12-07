@@ -29,7 +29,10 @@ class SymTable:
 
         # Define global name space
         gns = NameSpace()
-        gns.add_function("puts", PredefinedFunction(predefined_name="print"))
+        gns.add_function("puts", PredefinedFunction(
+            predefined_name="print",
+            predefined_construction="{name}({args})",
+        ))
         gns.add_function(
             "readline",
             PredefinedFunction(

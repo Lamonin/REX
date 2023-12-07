@@ -105,7 +105,7 @@ class Parser:
                     self.require(
                         Special.NEWLINE,
                         Special.SEMICOLON,
-                        message="Ожидался конец строки!",
+                        message="Ожидался конец строки, а получен токен {self.token}!",
                     )
 
             if isinstance(statement, NodeReturn):
@@ -170,12 +170,12 @@ class Parser:
                     stmts_to_remove.append(stmt)
             elif isinstance(stmt, NodeFuncDec):
                 if self.symtable.get_function(stmt.id).number_of_uses == 0:
-                    right_nodes = stmt.iterate()
-                    for right_node in right_nodes:
-                        if isinstance(right_node, NodeVariable):
-                            self.symtable.get_variable(right_node.id).number_of_uses -= 1
-                        elif isinstance(right_node, NodeFuncCall):
-                            self.symtable.get_function(right_node.id).number_of_uses -= 1
+                    child_nodes = stmt.iterate()
+                    for child_node in child_nodes:
+                        if isinstance(child_node, NodeVariable):
+                            self.symtable.get_variable(child_node.id).number_of_uses -= 1
+                        elif isinstance(child_node, NodeFuncCall):
+                            self.symtable.get_function(child_node.id).number_of_uses -= 1
                     stmts_to_remove.append(stmt)
 
         # Apply optimizations for node-tree
@@ -372,6 +372,7 @@ class Parser:
                 func_id,
                 Function(args_count=len(params.params), return_type=return_type),
             )
+
             return NodeFuncDec(func_id, params, block, self.indent)
         self.error("Ожидалось объявление функции!")
 
@@ -387,7 +388,7 @@ class Parser:
         f.number_of_uses += 1
 
         if isinstance(f, PredefinedFunction):
-            return NodeFuncCall(f.predefined_name, call_args, f.predefined_construction)
+            return NodeFuncCall(func_name, call_args, f.predefined_name, f.predefined_construction)
 
         return NodeFuncCall(func_name, call_args)
 
