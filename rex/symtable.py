@@ -29,10 +29,13 @@ class SymTable:
 
         # Define global name space
         gns = NameSpace()
-        gns.add_function("puts", PredefinedFunction(
-            predefined_name="print",
-            predefined_construction="{name}({args})",
-        ))
+        gns.add_function(
+            "puts",
+            PredefinedFunction(
+                predefined_name="print",
+                predefined_construction="{name}({args})",
+            ),
+        )
         gns.add_function(
             "readline",
             PredefinedFunction(
@@ -58,7 +61,9 @@ class SymTable:
     def add_function(self, name: str, value: Function):
         self.name_spaces[-1].add_function(name, value)
 
-    def compare_variable_type(self, var_name: str, var_type: type(SemanticType)) -> bool:
+    def compare_variable_type(
+        self, var_name: str, var_type: type(SemanticType)
+    ) -> bool:
         return isinstance(self.get_variable(var_name), var_type)
 
     def variable_exist(self, name: str) -> bool:
@@ -96,7 +101,9 @@ class SymTable:
             self.error(f"Функция {name} не объявлена!")
 
     def check_variable_is_array(self, name):
-        if not self.compare_variable_type(name, Auto) and not self.compare_variable_type(name, Array):
+        if not self.compare_variable_type(
+            name, Auto
+        ) and not self.compare_variable_type(name, Array):
             self.error(f"Переменная {name} не является массивом!")
 
     def check_function_arguments_count(self, name: str, args_count: int):
@@ -107,4 +114,6 @@ class SymTable:
             )
 
     def error(self, msg: str):
-        raise SemanticError(f"Ошибка семантического анализа ({self.get_pos()[0]}, {self.get_pos()[1]}): {msg}")
+        raise SemanticError(
+            f"Ошибка семантического анализа ({self.get_pos()[0]}, {self.get_pos()[1]}): {msg}"
+        )

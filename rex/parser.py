@@ -229,7 +229,7 @@ class Parser:
                     return self.function_call(lhs.id)
                 if not isinstance(lhs, NodeFuncCall):  # assign operation
                     return self.assign_op(lhs)
-        self.error(f"Некорректная конструкция {self.lexer.token.pos}")
+        self.error(f"Некорректная конструкция {self.lexer.token.pos}!")
 
     def if_statement(self) -> Node:
         if_block = self.if_block()
@@ -294,7 +294,8 @@ class Parser:
         return NodeActualParams(params)
 
     def cycle_statement(self) -> Node:
-        match self.token:
+        cycle_token = self.token
+        match cycle_token:
             case KeyWords.FOR:
                 self.next_token()
                 vars_list = self.variable_list()
@@ -317,64 +318,54 @@ class Parser:
                 return NodeForBlock(
                     NodeActualParams(vars_list), iterable, block, self.indent
                 )
-            case KeyWords.WHILE:
+            case KeyWords.WHILE | KeyWords.UNTIL:
                 self.next_token()
-                condition = self.arg(
-                    end=[KeyWords.DO, Special.NEWLINE, Special.SEMICOLON]
-                )
+                condition = self.arg(end=[KeyWords.DO, Special.NEWLINE, Special.SEMICOLON])
                 self.require(Special.NEWLINE, Special.SEMICOLON, KeyWords.DO)
                 self.next_token()
                 if self.token == Special.NEWLINE:
                     self.next_token()
                 block = self.block(KeyWords.END)
-                return NodeWhileBlock(condition, block, self.indent)
-            case KeyWords.UNTIL:
-                self.next_token()
-                condition = self.arg(
-                    end=[KeyWords.DO, Special.NEWLINE, Special.SEMICOLON]
-                )
-                self.require(Special.NEWLINE, Special.SEMICOLON, KeyWords.DO)
-                self.next_token()
-                if self.token == Special.NEWLINE:
-                    self.next_token()
-                block = self.block(KeyWords.END)
+                if cycle_token == KeyWords.WHILE:
+                    return NodeWhileBlock(condition, block, self.indent)
                 return NodeUntilBlock(condition, block, self.indent)
 
     def func_definition(self) -> Node:
-        if self.token == KeyWords.FUNCTION:
-            self.next_token()
-            func_id = self.lexer.token.value
-            self.next_token()
-            self.require(Special.LPAR, message="Пропущена открывающая скобка!")
-            self.next_token()
-            params = self.declare_params()
-            self.require(Special.RPAR, message="Пропущена закрывающая скобка!")
-            self.next_token()
-            self.require(Special.NEWLINE, Special.SEMICOLON)
-            self.next_token()
+        if self.token != KeyWords.FUNCTION:
+            self.error("Ожидалось объявление функции!")
 
-            def init_function():
-                for p in params.params:
-                    self.symtable.add_variable(p.id, Auto())
+        self.next_token()
+        func_id = self.lexer.token.value
+        self.next_token()
+        self.require(Special.LPAR, message="Пропущена открывающая скобка!")
+        self.next_token()
+        params = self.declare_params()
+        self.require(Special.RPAR, message="Пропущена закрывающая скобка!")
+        self.next_token()
+        self.require(Special.NEWLINE, Special.SEMICOLON)
+        self.next_token()
 
-            block = self.block(KeyWords.END, initialize_function=init_function)
+        def init_function():
+            for p in params.params:
+                self.symtable.add_variable(p.id, Auto())
 
-            return_type = None
-            for stmt in block.statements:
-                if isinstance(stmt, NodeReturn):
-                    rt = stmt.value
-                    while isinstance(rt, NodeFuncCall):
-                        rt = self.symtable.get_function(rt.id).return_type
-                    return_type = rt
-                    break
+        block = self.block(KeyWords.END, initialize_function=init_function)
 
-            self.symtable.add_function(
-                func_id,
-                Function(args_count=len(params.params), return_type=return_type),
-            )
+        return_type = None
+        for stmt in block.statements:
+            if isinstance(stmt, NodeReturn):
+                rt = stmt.value
+                while isinstance(rt, NodeFuncCall):
+                    rt = self.symtable.get_function(rt.id).return_type
+                return_type = rt
+                break
 
-            return NodeFuncDec(func_id, params, block, self.indent)
-        self.error("Ожидалось объявление функции!")
+        self.symtable.add_function(
+            func_id,
+            Function(args_count=len(params.params), return_type=return_type),
+        )
+
+        return NodeFuncDec(func_id, params, block, self.indent)
 
     def function_call(self, func_name):
         self.next_token()
@@ -478,10 +469,10 @@ class Parser:
                     temp_stack.pop()
                     left_par_count -= 1
                     if (
-                        not isinstance(out_stack[-1], NodeLiteral)
-                        and not isinstance(out_stack[-1], NodeVariable)
-                        and not isinstance(out_stack[-1], NodeFuncCall)
-                        and not isinstance(out_stack[-1], NodePar)
+                            not isinstance(out_stack[-1], NodeLiteral)
+                            and not isinstance(out_stack[-1], NodeVariable)
+                            and not isinstance(out_stack[-1], NodeFuncCall)
+                            and not isinstance(out_stack[-1], NodePar)
                     ):
                         out_stack.append(NodePar(out_stack.pop()))
                     self.next_token()
@@ -528,20 +519,19 @@ class Parser:
         if self.token == Operators.EQUALS:
             self.next_token()
             value = self.arg()
-
             if isinstance(value, NodeArray):
                 self.symtable.add_variable(lhs.id, Array())
             else:
                 self.symtable.add_variable(lhs.id, Variable())
-
             return NodeEquals(lhs, value)
-        else:
-            if self.token not in assign_ops:
-                self.error(f"Неизвестный оператор присваивания {self.token}")
-            self.symtable.check_variable_presence(lhs.id)
-            assign_op = assign_ops[self.token]
-            self.next_token()
-            return assign_op(lhs, self.arg())
+
+        if self.token not in assign_ops:
+            self.error(f"Неизвестный оператор присваивания {self.token}!")
+
+        self.symtable.check_variable_presence(lhs.id)
+        assign_op = assign_ops[self.token]
+        self.next_token()
+        return assign_op(lhs, self.arg())
 
     def bin_op(self, first):
         bin_operator: dict = {
@@ -624,7 +614,6 @@ class Parser:
 
         self.symtable.check_variable_presence(lhs.id)
         self.symtable.get_variable(lhs.id).number_of_uses += 1
-
         return lhs
 
     def literal(self):
