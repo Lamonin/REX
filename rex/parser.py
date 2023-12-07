@@ -157,26 +157,42 @@ class Parser:
 
     def optimize_statements(self, statements):
         stmts_to_remove = []
+        name_orders = dict()
+
+        def get_name_order(name):
+            return name_orders.get(name, 0)
+
+        def create_or_increase_name_order(name):
+            if name in name_orders:
+                name_orders[name] += 1
+            else:
+                name_orders[name] = 1
 
         for stmt in reversed(statements):
             if isinstance(stmt, NodeEquals):
-                if self.symtable.get_variable(stmt.left.id).number_of_uses == 0:
-                    right_nodes = stmt.right.iterate()
-                    for right_node in right_nodes:
-                        if isinstance(right_node, NodeVariable):
-                            self.symtable.get_variable(right_node.id).number_of_uses -= 1
-                        elif isinstance(right_node, NodeFuncCall):
-                            self.symtable.get_function(right_node.id).number_of_uses -= 1
-                    stmts_to_remove.append(stmt)
+                variable = self.symtable.get_variable(stmt.left.id)
+
+                if variable.number_of_uses.get(get_name_order(stmt.left.id)) != 0:
+                    create_or_increase_name_order(stmt.left.id)
+                    continue
+
+                variable.number_of_uses.remove(get_name_order(stmt.left.id))
+                for right_node in stmt.right.iterate():
+                    if self.symtable.get_by_node_type(right_node):
+                        self.symtable.get_by_node_type(right_node).number_of_uses.decrease(get_name_order(right_node.id))
+                stmts_to_remove.append(stmt)
             elif isinstance(stmt, NodeFuncDec):
-                if self.symtable.get_function(stmt.id).number_of_uses == 0:
-                    child_nodes = stmt.iterate()
-                    for child_node in child_nodes:
-                        if isinstance(child_node, NodeVariable):
-                            self.symtable.get_variable(child_node.id).number_of_uses -= 1
-                        elif isinstance(child_node, NodeFuncCall):
-                            self.symtable.get_function(child_node.id).number_of_uses -= 1
-                    stmts_to_remove.append(stmt)
+                function = self.symtable.get_function(stmt.id)
+
+                if function.number_of_uses.get(get_name_order(stmt.id)) != 0:
+                    create_or_increase_name_order(stmt.id)
+                    continue
+
+                function.number_of_uses.remove(get_name_order(stmt.id))
+                for child_node in stmt.iterate():
+                    if self.symtable.get_by_node_type(child_node):
+                        self.symtable.get_by_node_type(child_node).number_of_uses.decrease(get_name_order(child_node.id))
+                stmts_to_remove.append(stmt)
 
         # Apply optimizations for node-tree
         for stmt in stmts_to_remove:
@@ -376,7 +392,7 @@ class Parser:
         self.symtable.check_function_arguments_count(func_name, len(call_args.arguments))
 
         f = self.symtable.get_function(func_name)
-        f.number_of_uses += 1
+        f.number_of_uses.increase()
 
         if isinstance(f, PredefinedFunction):
             return NodeFuncCall(func_name, call_args, f.predefined_name, f.predefined_construction)
@@ -519,6 +535,7 @@ class Parser:
         if self.token == Operators.EQUALS:
             self.next_token()
             value = self.arg()
+
             if isinstance(value, NodeArray):
                 self.symtable.add_variable(lhs.id, Array())
             else:
@@ -613,7 +630,7 @@ class Parser:
             return self.function_call(lhs.id)
 
         self.symtable.check_variable_presence(lhs.id)
-        self.symtable.get_variable(lhs.id).number_of_uses += 1
+        self.symtable.get_variable(lhs.id).number_of_uses.increase()
         return lhs
 
     def literal(self):

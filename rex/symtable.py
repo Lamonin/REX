@@ -1,6 +1,7 @@
 from typing import Callable
 
 from rex.misc import get_args_name_from_count
+from rex.nodes import NodeFuncCall, NodeVariable, NodeArray
 from rex.types import *
 
 
@@ -14,9 +15,15 @@ class NameSpace:
         self.functions: dict[str, Function] = dict()
 
     def add_variable(self, name: str, value: Variable):
+        if name in self.variables:
+            value.number_of_uses = self.variables[name].number_of_uses
+            value.number_of_uses.new_order()
         self.variables[name] = value
 
     def add_function(self, name: str, value: Function):
+        if name in self.functions:
+            value.number_of_uses = self.functions[name].number_of_uses
+            value.number_of_uses.new_order()
         self.functions[name] = value
 
 
@@ -61,9 +68,7 @@ class SymTable:
     def add_function(self, name: str, value: Function):
         self.name_spaces[-1].add_function(name, value)
 
-    def compare_variable_type(
-        self, var_name: str, var_type: type(SemanticType)
-    ) -> bool:
+    def compare_variable_type(self, var_name: str, var_type: type(SemanticType)) -> bool:
         return isinstance(self.get_variable(var_name), var_type)
 
     def variable_exist(self, name: str) -> bool:
@@ -86,6 +91,13 @@ class SymTable:
                 return ns.functions[name]
         return None
 
+    def get_by_node_type(self, node):
+        if isinstance(node, NodeFuncCall):
+            return self.get_function(node.id)
+        elif isinstance(node, NodeVariable):
+            return self.get_variable(node.id)
+        return None
+
     def function_exist(self, name: str) -> bool:
         for ns in reversed(self.name_spaces):
             if name in ns.functions:
@@ -101,9 +113,7 @@ class SymTable:
             self.error(f"Функция {name} не объявлена!")
 
     def check_variable_is_array(self, name):
-        if not self.compare_variable_type(
-            name, Auto
-        ) and not self.compare_variable_type(name, Array):
+        if not self.compare_variable_type(name, Auto) and not self.compare_variable_type(name, Array):
             self.error(f"Переменная {name} не является массивом!")
 
     def check_function_arguments_count(self, name: str, args_count: int):
