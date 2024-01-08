@@ -86,6 +86,30 @@ class Parser:
             return False
         return True
 
+    def find_string_operand(self, node: Node) -> bool:
+        node = get_node_without_par(node)
+        if issubclass(type(node), NodeBinOperator):
+            return self.find_string_operand(node.left) and self.find_string_operand(node.right)
+        elif not issubclass(type(node), NodeString):
+            if isinstance(node, NodeFuncCall):
+                rt = self.symtable.get_function(node.id).return_type
+                if rt is not None and issubclass(type(node), NodeString):
+                    return True
+            return False
+        return True
+
+    def find_numeric_operand(self, node: Node) -> bool:
+        node = get_node_without_par(node)
+        if issubclass(type(node), NodeBinOperator):
+            return self.find_numeric_operand(node.left) and self.find_numeric_operand(node.right)
+        elif not issubclass(type(node), NodeInteger) and not issubclass(type(node), NodeFloat):
+            if isinstance(node, NodeFuncCall):
+                rt = self.symtable.get_function(node.id).return_type
+                if rt is not None and (issubclass(type(node), NodeInteger) or issubclass(type(node), NodeFloat)):
+                    return True
+            return False
+        return True
+
     def error(self, msg: str):
         raise ParsingError(
             f"({self.lexer.token.pos[0]}, {self.lexer.token.pos[1]}) : {msg}"
@@ -451,9 +475,18 @@ class Parser:
                             f"Ожидалось логическое значение, а получено "
                             f"{get_node_without_par(right_operand).__class__.__name__}"
                         )
-
-                # TODO Добавить проверку соответствия типов у числовых операторов
-                # TODO Попробовать оптимизировать логические операторы
+                if top_of_temp_stack in {Operators.PLUS}:
+                    string_flag = self.find_string_operand(left_operand) and self.find_string_operand(right_operand)
+                    numeric_flag = self.find_numeric_operand(left_operand) and self.find_numeric_operand(right_operand)
+                    if not string_flag and not numeric_flag:
+                        self.error(f"Операндами операции {top_of_temp_stack} должны быть одного типа!")
+                if top_of_temp_stack in {Operators.MINUS, Operators.MOD, Operators.ASTERISK, Operators.DEGREE, Operators.SLASH}:
+                    string_flag = self.find_string_operand(left_operand) and self.find_string_operand(right_operand)
+                    numeric_flag = self.find_numeric_operand(left_operand) and self.find_numeric_operand(right_operand)
+                    if string_flag:
+                        self.error(f"Операндами операции {top_of_temp_stack} не могут быть типа String!")
+                    elif not numeric_flag:
+                        self.error(f"Операндами операции {top_of_temp_stack} должны быть либо Integer, либо Float!")
 
                 out_stack.append(bin_ops[top_of_temp_stack](left_operand, right_operand))
             elif top_of_temp_stack == Special.LPAR:
