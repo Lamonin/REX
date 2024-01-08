@@ -485,15 +485,14 @@ class NodeFuncDec(NodeFunc):
 
 
 class NodeFuncCall(NodeFunc):
-    def __init__(self, id, params, predefined_construction=None):
+    def __init__(self, id, params, predefined_id=None, predefined_construction=None):
+        self.predefined_id=predefined_id
         self.predefined_construction = predefined_construction
         super().__init__(id, params)
 
     def generate(self):
         if self.predefined_construction:
-            return self.predefined_construction.format(
-                name=self.id, args=self.params.generate()
-            )
+            return self.predefined_construction.format(name=self.predefined_id, args=self.params.generate())
         return f"{self.id}({self.params.generate()})"
 
     def iterate(self) -> list:

@@ -2,6 +2,7 @@ import unittest
 from rex.lexer import Lexer
 from rex.parser import Parser
 from rex.symbols import *
+from rex.symtable import SemanticError
 
 
 def read_code(path: str) -> str:
@@ -427,3 +428,290 @@ class RexParserTests(unittest.TestCase):
         parse_result = self.parser.parse()
         print(parse_result)
 
+
+class RexSemanticTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.parser = Parser()
+
+    def test_valid_code(self):
+        code = '''
+               a = 10
+               b = 2 * a + 10
+               
+               def sum(a, b)
+                    def bar(a)
+                        return 10 + a
+                    end
+                   return a + b + bar(a)
+               end
+               
+               c = sum(1, 10) + sum(a, b)
+               puts(c)
+           '''
+
+        self.parser.setup(code)
+
+        try:
+            self.parser.parse()
+        except SemanticError:
+            self.assertTrue(False)
+
+        self.assertTrue(True)
+
+    def test_using_an_undeclared_variable(self):
+        code = '''
+            c = a
+        '''
+
+        self.parser.setup(code)
+
+        try:
+            self.parser.parse()
+        except Exception as e:
+            self.assertEqual(type(e), SemanticError)
+            return
+
+        self.assertTrue(False)
+
+    def test_calling_an_undeclared_function(self):
+        code = '''
+            c = foo()
+        '''
+
+        self.parser.setup(code)
+
+        try:
+            self.parser.parse()
+        except Exception as e:
+            self.assertEqual(type(e), SemanticError)
+            return
+
+        self.assertTrue(False)
+
+    def test_calling_a_function_with_the_wrong_number_of_parameters(self):
+        code = '''
+            def sum(a, b)
+                return a + b
+            end
+            c = sum(1)
+        '''
+
+        self.parser.setup(code)
+
+        try:
+            self.parser.parse()
+        except Exception as e:
+            self.assertEqual(type(e), SemanticError)
+            return
+
+        self.assertTrue(False)
+
+    def test_use_of_a_variable_outside_its_scope(self):
+        code = '''
+            if true then
+                a = 10
+            end
+            puts(a)
+        '''
+
+        self.parser.setup(code)
+
+        try:
+            self.parser.parse()
+        except Exception as e:
+            self.assertEqual(type(e), SemanticError)
+            return
+
+        self.assertTrue(False)
+
+    def test_using_a_function_outside_its_scope(self):
+        code = '''
+            if true then
+                def foo()
+                    puts("Foo")
+                end
+                puts(foo())
+            end
+            puts(foo())
+        '''
+
+        self.parser.setup(code)
+
+        try:
+            self.parser.parse()
+        except Exception as e:
+            self.assertEqual(type(e), SemanticError)
+            return
+
+        self.assertTrue(False)
+
+
+class RexGeneratorTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.parser = Parser()
+
+    def test_correct_translation_of_all_ruby_code(self):
+        code = '''
+            # Переменные
+            name = "John"
+            age = 30
+            
+            # Условие
+            if age >= 18
+              puts(name + " is an adult")
+            else
+             puts(name + " is underage")
+            end
+            
+            # Цикл while
+            i = 0
+            while i < 5
+              puts(i)
+              i += 1
+            end
+            
+            # Цикл until
+            j = 5 
+            until j == 0
+              puts(j)
+              j -= 1
+            end
+            
+            # Цикл for
+            for k in 0..5
+              puts(k)
+            end
+            
+            # Функция
+            def print_name(n)
+              puts("Hello, #{n}!")
+            end
+            
+            print_name(name)
+            
+            # Ввод данных
+            input_name = readline("Enter your name: ")
+            puts("Hi #{input_name}!")
+        '''
+
+        translated_r_code = read_code('codes/translated_r_code_1.rb')
+
+        self.parser.setup(code)
+        parse_res = self.parser.parse()
+        print(parse_res)
+        gen_res = parse_res.generate()
+        print(gen_res)
+        self.assertEqual(gen_res, translated_r_code)
+
+    def test_optimization_solving_simple_math(self):
+        code = '''
+            a = (10 + 2 * (9-5) ** 2) / 2
+            b = 11 ** 2 - 12 ** 2
+            c = a + b
+            puts(c)
+        '''
+
+        translated_r_code = (
+            "a <- 21\n"
+            "b <- -23\n"
+            "c <- a + b\n"
+            "print(c)\n"
+        )
+
+        self.parser.setup(code)
+        parse_res = self.parser.parse()
+        gen_res = parse_res.generate()
+        self.assertEqual(gen_res, translated_r_code)
+
+    def test_optimization_parenthesis_removal(self):
+        code = '''
+            a = (((((((((((10 + 20)))))))))))
+            b = (((((a)) + (10))) * 20)
+            puts(a + b)
+        '''
+
+        translated_r_code = (
+            "a <- 30\n"
+            "b <- (a + 10) * 20\n"
+            "print(a + b)\n"
+        )
+
+        self.parser.setup(code)
+        parse_res = self.parser.parse()
+        gen_res = parse_res.generate()
+        self.assertEqual(gen_res, translated_r_code)
+
+    def test_optimization_extra_unary_operator(self):
+        code = '''
+            a = --10
+            b = ---1
+            c = +++1
+            puts(a + b + c)
+            if not not not true then
+                puts(a + b)
+            end
+        '''
+
+        translated_r_code = (
+            "a <- 10\n"
+            "b <- -1\n"
+            "c <- +1\n"
+            "print(a + b + c)\n"
+            "if (!TRUE) {\n"
+            "\tprint(a + b)\n"
+            "}\n"
+        )
+
+        self.parser.setup(code)
+        parse_res = self.parser.parse()
+        gen_res = parse_res.generate()
+        self.assertEqual(gen_res, translated_r_code)
+
+    def test_optimization_unused_variables_and_functions(self):
+        code = '''
+            a = 10
+            b = 20
+            def foo()
+              return a
+            end
+            c = a + b
+            puts(a)
+        '''
+
+        translated_r_code = (
+            "a <- 10\n"
+            "print(a)\n"
+        )
+
+        self.parser.setup(code)
+        parse_res = self.parser.parse()
+        gen_res = parse_res.generate()
+        self.assertEqual(gen_res, translated_r_code)
+
+    def test_optimization_return_statement(self):
+        code = '''
+            def foo()
+                puts("Foo called")
+                return
+                puts("Foo try called")
+            end
+            foo()
+            return false
+            a = 10
+            b = 20
+            puts(a + b)
+        '''
+
+        translated_r_code = (
+            "foo <- function() {\n"
+            '\tprint("Foo called")\n'
+            "\treturn\n"
+            "}\n"
+            "foo()\n"
+            "return\n"
+        )
+
+        self.parser.setup(code)
+        parse_res = self.parser.parse()
+        gen_res = parse_res.generate()
+        self.assertEqual(gen_res, translated_r_code)

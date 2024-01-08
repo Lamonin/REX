@@ -1,6 +1,26 @@
+class NumberOfUsesTable:
+    def __init__(self):
+        self.use_table = [0]
+
+    def new_order(self):
+        self.use_table.append(0)
+
+    def get(self, order: int = 0):
+        return self.use_table[-(order + 1)]
+
+    def increase(self, order: int = 0):
+        self.use_table[-(order + 1)] += 1
+
+    def decrease(self, order: int = 0):
+        self.use_table[-(order + 1)] -= 1
+
+    def remove(self, order: int = 0):
+        del self.use_table[-(order + 1)]
+
+
 class SemanticType:
     def __init__(self):
-        self.number_of_uses = 0
+        self.number_of_uses: NumberOfUsesTable = NumberOfUsesTable()
 
 
 class Variable(SemanticType):

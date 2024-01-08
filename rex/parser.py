@@ -1,5 +1,4 @@
 from rex.lexer import Lexer
-from rex.misc import get_args_name_from_count
 from rex.types import *
 from rex.nodes import *
 from rex.symbols import *
@@ -61,6 +60,7 @@ class Parser:
         self.lexer.setup(code)
         self.lexer.next_token()
         self.symtable = SymTable()
+        self.symtable.get_pos = lambda: self.lexer.token.pos
         self.indent = 0
         self.token = self.lexer.token.symbol
 
@@ -117,7 +117,7 @@ class Parser:
 
     def parse(self) -> Node:
         if self.token == Special.EOF:
-            self.error("Empty file!")
+            self.error("Пустой файл!")
 
         statements = []
         while self.token != Special.EOF:
@@ -129,7 +129,7 @@ class Parser:
                     self.require(
                         Special.NEWLINE,
                         Special.SEMICOLON,
-                        message="Ожидался конец строки!",
+                        message="Ожидался конец строки, а получен токен {self.token}!",
                     )
 
             if isinstance(statement, NodeReturn):
@@ -143,7 +143,7 @@ class Parser:
         return NodeProgram(statements)
 
     def block(self, *args: Enum, skip_last=True, initialize_function=None) -> NodeBlock:
-        self.symtable.create_local_name_space()
+        self.symtable.create_local_namespace()
         self.indent += 1
 
         if initialize_function:
@@ -174,33 +174,49 @@ class Parser:
         # Optimize block statements
         self.optimize_statements(statements)
 
-        self.symtable.dispose_local_name_space(self.lexer.token.pos)
+        self.symtable.dispose_local_namespace()
         self.indent -= 1
 
         return NodeBlock(statements, self.indent + 1)
 
     def optimize_statements(self, statements):
         stmts_to_remove = []
+        name_orders = dict()
+
+        def get_name_order(name):
+            return name_orders.get(name, 0)
+
+        def create_or_increase_name_order(name):
+            if name in name_orders:
+                name_orders[name] += 1
+            else:
+                name_orders[name] = 1
 
         for stmt in reversed(statements):
             if isinstance(stmt, NodeEquals):
-                if self.symtable.get_variable(stmt.left.id).number_of_uses == 0:
-                    right_nodes = stmt.right.iterate()
-                    for right_node in right_nodes:
-                        if isinstance(right_node, NodeVariable):
-                            self.symtable.get_variable(right_node.id).number_of_uses -= 1
-                        elif isinstance(right_node, NodeFuncCall):
-                            self.symtable.get_function(right_node.id).number_of_uses -= 1
-                    stmts_to_remove.append(stmt)
+                variable = self.symtable.get_variable(stmt.left.id)
+
+                if variable.number_of_uses.get(get_name_order(stmt.left.id)) != 0:
+                    create_or_increase_name_order(stmt.left.id)
+                    continue
+
+                variable.number_of_uses.remove(get_name_order(stmt.left.id))
+                for right_node in stmt.right.iterate():
+                    if self.symtable.get_by_node_type(right_node):
+                        self.symtable.get_by_node_type(right_node).number_of_uses.decrease(get_name_order(right_node.id))
+                stmts_to_remove.append(stmt)
             elif isinstance(stmt, NodeFuncDec):
-                if self.symtable.get_function(stmt.id).number_of_uses == 0:
-                    right_nodes = stmt.iterate()
-                    for right_node in right_nodes:
-                        if isinstance(right_node, NodeVariable):
-                            self.symtable.get_variable(right_node.id).number_of_uses -= 1
-                        elif isinstance(right_node, NodeFuncCall):
-                            self.symtable.get_function(right_node.id).number_of_uses -= 1
-                    stmts_to_remove.append(stmt)
+                function = self.symtable.get_function(stmt.id)
+
+                if function.number_of_uses.get(get_name_order(stmt.id)) != 0:
+                    create_or_increase_name_order(stmt.id)
+                    continue
+
+                function.number_of_uses.remove(get_name_order(stmt.id))
+                for child_node in stmt.iterate():
+                    if self.symtable.get_by_node_type(child_node):
+                        self.symtable.get_by_node_type(child_node).number_of_uses.decrease(get_name_order(child_node.id))
+                stmts_to_remove.append(stmt)
 
         # Apply optimizations for node-tree
         for stmt in stmts_to_remove:
@@ -253,7 +269,7 @@ class Parser:
                     return self.function_call(lhs.id)
                 if not isinstance(lhs, NodeFuncCall):  # assign operation
                     return self.assign_op(lhs)
-        self.error(f"Некорректная конструкция {self.lexer.token.pos}")
+        self.error(f"Некорректная конструкция {self.lexer.token.pos}!")
 
     def if_statement(self) -> Node:
         if_block = self.if_block()
@@ -318,7 +334,8 @@ class Parser:
         return NodeActualParams(params)
 
     def cycle_statement(self) -> Node:
-        match self.token:
+        cycle_token = self.token
+        match cycle_token:
             case KeyWords.FOR:
                 self.next_token()
                 vars_list = self.variable_list()
@@ -341,84 +358,68 @@ class Parser:
                 return NodeForBlock(
                     NodeActualParams(vars_list), iterable, block, self.indent
                 )
-            case KeyWords.WHILE:
+            case KeyWords.WHILE | KeyWords.UNTIL:
                 self.next_token()
-                condition = self.arg(
-                    end=[KeyWords.DO, Special.NEWLINE, Special.SEMICOLON]
-                )
+                condition = self.arg(end=[KeyWords.DO, Special.NEWLINE, Special.SEMICOLON])
                 self.require(Special.NEWLINE, Special.SEMICOLON, KeyWords.DO)
                 self.next_token()
                 if self.token == Special.NEWLINE:
                     self.next_token()
                 block = self.block(KeyWords.END)
-                return NodeWhileBlock(condition, block, self.indent)
-            case KeyWords.UNTIL:
-                self.next_token()
-                condition = self.arg(
-                    end=[KeyWords.DO, Special.NEWLINE, Special.SEMICOLON]
-                )
-                self.require(Special.NEWLINE, Special.SEMICOLON, KeyWords.DO)
-                self.next_token()
-                if self.token == Special.NEWLINE:
-                    self.next_token()
-                block = self.block(KeyWords.END)
+                if cycle_token == KeyWords.WHILE:
+                    return NodeWhileBlock(condition, block, self.indent)
                 return NodeUntilBlock(condition, block, self.indent)
 
     def func_definition(self) -> Node:
-        if self.token == KeyWords.FUNCTION:
-            self.next_token()
-            func_id = self.lexer.token.value
-            self.next_token()
-            self.require(Special.LPAR, message="Пропущена открывающая скобка!")
-            self.next_token()
-            params = self.declare_params()
-            self.require(Special.RPAR, message="Пропущена закрывающая скобка!")
-            self.next_token()
-            self.require(Special.NEWLINE, Special.SEMICOLON)
-            self.next_token()
+        if self.token != KeyWords.FUNCTION:
+            self.error("Ожидалось объявление функции!")
 
-            def init_function():
-                for p in params.params:
-                    self.symtable.add_variable(p.id, Auto())
+        self.next_token()
+        func_id = self.lexer.token.value
+        self.next_token()
+        self.require(Special.LPAR, message="Пропущена открывающая скобка!")
+        self.next_token()
+        params = self.declare_params()
+        self.require(Special.RPAR, message="Пропущена закрывающая скобка!")
+        self.next_token()
+        self.require(Special.NEWLINE, Special.SEMICOLON)
+        self.next_token()
 
-            block = self.block(KeyWords.END, initialize_function=init_function)
+        def init_function():
+            for p in params.params:
+                self.symtable.add_variable(p.id, Auto())
 
-            return_type = None
-            for stmt in block.statements:
-                if isinstance(stmt, NodeReturn):
-                    rt = stmt.value
-                    while isinstance(rt, NodeFuncCall):
-                        rt = self.symtable.get_function(rt.id).return_type
-                    return_type = rt
-                    break
+        block = self.block(KeyWords.END, initialize_function=init_function)
 
-            self.symtable.add_function(
-                func_id,
-                Function(args_count=len(params.params), return_type=return_type),
-            )
-            return NodeFuncDec(func_id, params, block, self.indent)
-        self.error("Ожидалось объявление функции!")
+        return_type = None
+        for stmt in block.statements:
+            if isinstance(stmt, NodeReturn):
+                rt = stmt.value
+                while isinstance(rt, NodeFuncCall):
+                    rt = self.symtable.get_function(rt.id).return_type
+                return_type = rt
+                break
+
+        self.symtable.add_function(
+            func_id,
+            Function(args_count=len(params.params), return_type=return_type),
+        )
+
+        return NodeFuncDec(func_id, params, block, self.indent)
 
     def function_call(self, func_name):
         self.next_token()
-
         call_args = self.args(end=[Special.COMMA, Special.NEWLINE], pars=True)
-
-        f = self.symtable.get_function(func_name)
-        if f.args_count != -1 and f.args_count != len(call_args.arguments):
-            self.error(
-                f"Функция {func_name} принимает {f.args_count} {get_args_name_from_count(f.args_count)}, а не {len(call_args.arguments)}"
-            )
-
         self.require(Special.RPAR, message="Пропущена закрывающая скобка!")
         self.next_token()
 
-        f.number_of_uses += 1
+        self.symtable.check_function_arguments_count(func_name, len(call_args.arguments))
+
+        f = self.symtable.get_function(func_name)
+        f.number_of_uses.increase()
 
         if isinstance(f, PredefinedFunction):
-            return NodeFuncCall(
-                f.predefined_name, call_args, f.predefined_construction
-            )
+            return NodeFuncCall(func_name, call_args, f.predefined_name, f.predefined_construction)
 
         return NodeFuncCall(func_name, call_args)
 
@@ -516,8 +517,11 @@ class Parser:
                             self.error("Пропущена открывающая скобка!")
                     temp_stack.pop()
                     left_par_count -= 1
-                    if not isinstance(out_stack[-1], NodeLiteral) and not isinstance(
-                            out_stack[-1], NodePar
+                    if (
+                            not isinstance(out_stack[-1], NodeLiteral)
+                            and not isinstance(out_stack[-1], NodeVariable)
+                            and not isinstance(out_stack[-1], NodeFuncCall)
+                            and not isinstance(out_stack[-1], NodePar)
                     ):
                         out_stack.append(NodePar(out_stack.pop()))
                     self.next_token()
@@ -569,16 +573,15 @@ class Parser:
                 self.symtable.add_variable(lhs.id, Array())
             else:
                 self.symtable.add_variable(lhs.id, Variable())
-
             return NodeEquals(lhs, value)
-        else:
-            if self.token not in assign_ops:
-                self.error(f"Неизвестный оператор присваивания {self.token}")
-            if not self.symtable.variable_exist(lhs.id):
-                self.error(f"Переменная {lhs.id} не была объявлена!")
-            assign_op = assign_ops[self.token]
-            self.next_token()
-            return assign_op(lhs, self.arg())
+
+        if self.token not in assign_ops:
+            self.error(f"Неизвестный оператор присваивания {self.token}!")
+
+        self.symtable.check_variable_presence(lhs.id)
+        assign_op = assign_ops[self.token]
+        self.next_token()
+        return assign_op(lhs, self.arg())
 
     def bin_op(self, first):
         bin_operator: dict = {
@@ -649,12 +652,7 @@ class Parser:
                 args.append(idx)
                 self.require(Special.RBR)
                 self.next_token()
-            if not self.symtable.variable_exist(var.id):
-                self.error(f"Переменная {var.id} не была объявлена!")
-            if not self.symtable.compare_variable_type(
-                    var.id, Auto
-            ) and not self.symtable.compare_variable_type(var.id, Array):
-                self.error(f"Переменная {var.id} не является массивом!")
+            self.symtable.check_variable_is_array(var.id)
             return NodeArrayCall(var.id, args)
         return var
 
@@ -664,11 +662,8 @@ class Parser:
         if isinstance(lhs, NodeVariable) and self.token == Special.LPAR:
             return self.function_call(lhs.id)
 
-        if not self.symtable.variable_exist(lhs.id):
-            self.error(f"Переменная {lhs.id} не была объявлена!")
-
-        self.symtable.get_variable(lhs.id).number_of_uses += 1
-
+        self.symtable.check_variable_presence(lhs.id)
+        self.symtable.get_variable(lhs.id).number_of_uses.increase()
         return lhs
 
     def literal(self):
