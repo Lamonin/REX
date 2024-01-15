@@ -93,7 +93,7 @@ class Parser:
         elif not issubclass(type(node), NodeString):
             if isinstance(node, NodeFuncCall):
                 rt = self.symtable.get_function(node.id).return_type
-                if rt is not None and issubclass(type(node), NodeString):
+                if rt is not None and issubclass(type(rt), NodeString):
                     return True
             return False
         return True
@@ -105,7 +105,7 @@ class Parser:
         elif not issubclass(type(node), NodeInteger) and not issubclass(type(node), NodeFloat):
             if isinstance(node, NodeFuncCall):
                 rt = self.symtable.get_function(node.id).return_type
-                if rt is not None and (issubclass(type(node), NodeInteger) or issubclass(type(node), NodeFloat)):
+                if rt is not None and (issubclass(type(rt), NodeInteger) or issubclass(type(rt), NodeFloat)):
                     return True
             return False
         return True

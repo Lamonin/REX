@@ -87,14 +87,6 @@ class Lexer:
         def prev_char():
             self.pos -= 1
 
-        def next_char_is(c: str) -> bool:
-            if not is_eof():
-                next_char()
-                res = char() == c
-                prev_char()
-                return res
-            return False
-
         def try_next_char() -> bool:
             if is_eof():
                 return False
