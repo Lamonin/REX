@@ -83,7 +83,6 @@ class Parser:
                 rt = self.symtable.get_function(node.id).return_type
                 if rt is not None and issubclass(type(rt), NodeLogical):
                     return True
-            return False
         return True
 
     def find_string_operand(self, node: Node) -> bool:
@@ -95,7 +94,8 @@ class Parser:
                 rt = self.symtable.get_function(node.id).return_type
                 if rt is not None and issubclass(type(rt), NodeString):
                     return True
-            return False
+            nt = self.get_node_fundamental_type(node)
+            return nt is StringType or nt is AnyType
         return True
 
     def find_numeric_operand(self, node: Node) -> bool:
@@ -107,7 +107,8 @@ class Parser:
                 rt = self.symtable.get_function(node.id).return_type
                 if rt is not None and (issubclass(type(rt), NodeInteger) or issubclass(type(rt), NodeFloat)):
                     return True
-            return False
+            nt = self.get_node_fundamental_type(node)
+            return nt is NumericType or nt is AnyType
         return True
 
     def error(self, msg: str):
@@ -129,7 +130,7 @@ class Parser:
                     self.require(
                         Special.NEWLINE,
                         Special.SEMICOLON,
-                        message="Ожидался конец строки, а получен токен {self.token}!",
+                        message=f"Ожидался конец строки, а получен токен {self.token}!",
                     )
 
             if isinstance(statement, NodeReturn):
@@ -484,7 +485,7 @@ class Parser:
                 if top_of_temp_stack in {Operators.MINUS, Operators.MOD, Operators.ASTERISK, Operators.DEGREE, Operators.SLASH}:
                     string_flag = self.find_string_operand(left_operand) and self.find_string_operand(right_operand)
                     numeric_flag = self.find_numeric_operand(left_operand) and self.find_numeric_operand(right_operand)
-                    if string_flag:
+                    if not numeric_flag and string_flag:
                         self.error(f"Операндами операции {top_of_temp_stack} не могут быть типа String!")
                     elif not numeric_flag:
                         self.error(f"Операндами операции {top_of_temp_stack} должны быть либо Integer, либо Float!")
@@ -572,7 +573,7 @@ class Parser:
             if isinstance(value, NodeArray):
                 self.symtable.add_variable(lhs.id, Array())
             else:
-                self.symtable.add_variable(lhs.id, Variable())
+                self.symtable.add_variable(lhs.id, Variable(self.get_node_fundamental_type(value)))
             return NodeEquals(lhs, value)
 
         if self.token not in assign_ops:
@@ -681,3 +682,16 @@ class Parser:
                 self.error("Неопознанный тип данных!")
         self.next_token()
         return node
+
+    def get_node_fundamental_type(self, node: Node) -> type:
+        node = get_node_without_par(node)
+        if isinstance(node, (NodeInteger, NodeFloat, NodeUnaryPlus, NodeUnaryMinus, NodePlus, NodeMinus, NodeAsterisk, NodeSlash, NodeDegree, NodeMod)):
+            return NumericType
+        if isinstance(node, NodeString):
+            return StringType
+        if isinstance(node, NodeArrayCall):
+            return ArrayType
+        if isinstance(node, NodeVariable):
+            return self.symtable.get_variable(node.id).type
+        return AnyType
+
