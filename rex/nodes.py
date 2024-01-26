@@ -115,6 +115,14 @@ class NodeStatement(Node):
         return self.statement.generate() + "\n"
 
 
+class NodeComment(Node):
+    def __init__(self, comment):
+        self.comment = comment
+
+    def generate(self):
+        return f"#{self.comment}"
+
+
 class NodeLiteral(Node):
     def __init__(self, value):
         self.value = value

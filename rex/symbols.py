@@ -47,6 +47,7 @@ class Special(Enum):
     LFBR = auto()  # Right Figure Bracket
     RFBR = auto()  # Right Figure Bracket
     VBR = auto()  # Vertical Bracket
+    COMMENT = auto()
 
 
 class Reserved(Enum):

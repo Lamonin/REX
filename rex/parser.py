@@ -270,7 +270,11 @@ class Parser:
                     return self.function_call(lhs.id)
                 if not isinstance(lhs, NodeFuncCall):  # assign operation
                     return self.assign_op(lhs)
-        self.error(f"Некорректная конструкция {self.lexer.token.pos}!")
+            case Special.COMMENT:
+                comment_text = self.lexer.token.value
+                self.next_token()
+                return NodeComment(comment_text)
+        self.error(f"Некорректная конструкция {self.token} {self.lexer.token.pos}!")
 
     def if_statement(self) -> Node:
         if_block = self.if_block()

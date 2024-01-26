@@ -128,11 +128,15 @@ class Lexer:
             self.token = Token(brackets[char()], pos=(self.line, self.char_pos))
         # COMMENTARY
         elif char() == "#":
+            start_char_pos = self.char_pos
+            start_pos = self.pos + 1
             while not is_eof() and char() != "\n":
                 next_char()
+            comment_text = self.code[start_pos:self.pos]
+            self.token = Token(Special.COMMENT, comment_text, pos=(self.line, start_char_pos))
             self.line += 1
             self.char_pos = 0
-            return self.next_token()
+            prev_char()
         # STRINGS
         elif self.trnslt.is_quote(char()):
             quote = char()
