@@ -1,5 +1,29 @@
+def foo()
+	puts(10)
+end
+
+foo()
+
 a = 10
-b = 20
+a = 10
+a = 10
+a = 10
+a = 20
+b = a + a
+b = a + a
+b = a + a
+b = a + a
+b = a + a
+b = 20 + a
+
+puts(b)
+
+def foo()
+	puts(30)
+end
+
+foo()
+
 def foo()
   return a
 end
@@ -9,6 +33,7 @@ puts(a)
 # define a method to sum values
 
 def sum(d, c)
+	puts(d)
     return d + c
 end
 

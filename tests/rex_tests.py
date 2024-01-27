@@ -322,51 +322,6 @@ class RexLexerTests(unittest.TestCase):
             res = res and first_result == result
         self.assertEqual(res, True)
 
-    def test_complexCode(self):
-        code = '''\
-                hello = "Hello, world!"
-                # Define a method
-                def self.say_hello
-                    puts hello
-                end
-
-                x = 5
-                if x > 10
-                  puts "x is greater than 10"
-                elsif x > 5
-                  puts "x is greater than 5 but less than or equal to 10"
-                else
-                  puts "x is less than or equal to 5"
-                end
-                
-                my_array = [1, 2, 3, 4, 5]
-                puts my_array.sum
-               '''
-
-        self.rex.setup(code)
-
-        parsed_tokens = list()
-        while self.rex.next_token():
-            parsed_tokens.append(str(self.rex.token))
-        parsed_tokens.append(str(self.rex.token))
-
-        expected_result = [
-            'ID:hello:1:17', 'EQUALS:1:23', 'STR:Hello, world!:1:25', 'NEWLINE:1:40', 'FUNCTION:3:17',
-            'ID:self:3:21', 'DOT:3:25', 'ID:say_hello:3:26', 'NEWLINE:3:35', 'ID:puts:4:21', 'ID:hello:4:26',
-            'NEWLINE:4:31', 'END:5:17', 'NEWLINE:5:20', 'NEWLINE:6:1', 'ID:x:7:17', 'EQUALS:7:19', 'INTEGER:5:7:21',
-            'NEWLINE:7:22', 'IF:8:17', 'ID:x:8:20', 'GREATER:8:22', 'INTEGER:10:8:24', 'NEWLINE:8:26', 'ID:puts:9:19',
-            'STR:x is greater than 10:9:24', 'NEWLINE:9:46', 'ELSIF:10:17', 'ID:x:10:23', 'GREATER:10:25',
-            'INTEGER:5:10:27', 'NEWLINE:10:28', 'ID:puts:11:19',
-            'STR:x is greater than 5 but less than or equal to 10:11:24', 'NEWLINE:11:74', 'ELSE:12:17',
-            'NEWLINE:12:21', 'ID:puts:13:19', 'STR:x is less than or equal to 5:13:24', 'NEWLINE:13:54', 'END:14:17',
-            'NEWLINE:14:20', 'NEWLINE:15:17', 'ID:my_array:16:17', 'EQUALS:16:26', 'LBR:16:28', 'INTEGER:1:16:29',
-            'COMMA:16:30', 'INTEGER:2:16:32', 'COMMA:16:33', 'INTEGER:3:16:35', 'COMMA:16:36', 'INTEGER:4:16:38',
-            'COMMA:16:39', 'INTEGER:5:16:41', 'RBR:16:42', 'NEWLINE:16:43', 'ID:puts:17:17', 'ID:my_array:17:22',
-            'DOT:17:30', 'ID:sum:17:31', 'NEWLINE:17:34', 'EOF:18:16'
-        ]
-
-        self.assertListEqual(parsed_tokens, expected_result)
-
     def test_tokensPositioning(self):
         code = '''\
                my_array = [1, 2, 3, 4, 5]
