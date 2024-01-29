@@ -63,7 +63,6 @@ class Function(SemanticType):
 
 
 class PredefinedFunction(Function):
-    def __init__(self, predefined_name, predefined_construction=None, args_count=-1):
-        self.predefined_name = predefined_name
+    def __init__(self, predefined_construction=None, args_count=-1):
         self.predefined_construction = predefined_construction
         super().__init__(args_count=args_count)

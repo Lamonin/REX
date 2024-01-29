@@ -424,7 +424,7 @@ class Parser:
         f.number_of_uses.increase()
 
         if isinstance(f, PredefinedFunction):
-            return NodeFuncCall(func_name, call_args, f.predefined_name, f.predefined_construction)
+            return NodeFuncCall(func_name, call_args, f.predefined_construction)
 
         return NodeFuncCall(func_name, call_args)
 

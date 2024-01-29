@@ -39,15 +39,13 @@ class SymTable:
         gns.add_function(
             "puts",
             PredefinedFunction(
-                predefined_name="print",
-                predefined_construction="{name}({args})",
+                predefined_construction="print({args})",
             ),
         )
         gns.add_function(
             "readline",
             PredefinedFunction(
-                predefined_name="readline",
-                predefined_construction="{name}()",
+                predefined_construction="readline()",
                 args_count=1,
             ),
         )

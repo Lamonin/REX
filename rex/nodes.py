@@ -55,7 +55,7 @@ class Node:
 
         return res
 
-    def generate(self):
+    def generate(self) -> str:
         pass
 
     def iterate(self) -> list:
@@ -81,8 +81,8 @@ class NodeProgram(Node):
 
 class NodeBlock(Node):
     def __init__(self, statements, indent: int):
-        self.statements = statements
         self.indent = indent
+        self.statements = statements
 
     def generate(self, indent=0):
         code = ""
@@ -352,7 +352,6 @@ class NodeIfBlock(Node):
         self.else_block = else_block if else_block is not None else ""
 
     def generate(self):
-        indent_str = get_indent(self.indent)
         code = f"{self.if_block.generate(self.indent)}"
         for elsif in self.elsif:
             code += f" {elsif.generate(self.indent)}"
@@ -371,9 +370,9 @@ class NodeIfBlock(Node):
 
 class NodeCycleStatement(Node):
     def __init__(self, condition, block, indent):
+        self.indent = indent
         self.condition = condition
         self.block = block
-        self.indent = indent
 
     def iterate(self) -> list:
         result = self.condition.iterate()
@@ -395,10 +394,10 @@ class NodeUntilBlock(NodeCycleStatement):
 
 class NodeForBlock(Node):
     def __init__(self, it, iterable, block, indent):
+        self.indent = indent
         self.iter = it
         self.iterable = iterable
         self.block = block
-        self.indent = indent
 
     def generate(self):
         indent_str = get_indent(self.indent)
@@ -493,14 +492,13 @@ class NodeFuncDec(NodeFunc):
 
 
 class NodeFuncCall(NodeFunc):
-    def __init__(self, id, params, predefined_id=None, predefined_construction=None):
-        self.predefined_id=predefined_id
-        self.predefined_construction = predefined_construction
+    def __init__(self, id, params, predefined_construction=None):
         super().__init__(id, params)
+        self.predefined_construction = predefined_construction
 
     def generate(self):
         if self.predefined_construction:
-            return self.predefined_construction.format(name=self.predefined_id, args=self.params.generate())
+            return self.predefined_construction.format(name=id, args=self.params.generate())
         return f"{self.id}({self.params.generate()})"
 
     def iterate(self) -> list:
