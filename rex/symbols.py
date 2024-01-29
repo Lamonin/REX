@@ -26,6 +26,12 @@ class KeyWords(Enum):
     AND = auto()
     NOT = auto()
 
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return self.name
+
 
 class Special(Enum):
     ID = auto()
@@ -49,11 +55,23 @@ class Special(Enum):
     VBR = auto()  # Vertical Bracket
     COMMENT = auto()
 
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return self.name
+
 
 class Reserved(Enum):
     TRUE = auto()
     FALSE = auto()
     NIL = auto()
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return self.name
 
 
 class Operators(Enum):
@@ -76,6 +94,12 @@ class Operators(Enum):
     SLASH_EQUALS = auto()
     MOD_EQUALS = auto()
     DEGREE_EQUALS = auto()
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return self.name
 
 
 ops: dict[str, Operators | Special] = {

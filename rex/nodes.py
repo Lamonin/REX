@@ -144,6 +144,11 @@ class NodeString(NodeLiteral):
         return f'"{self.value}"'
 
 
+class NodeNil(Node):
+    def generate(self):
+        return "NULL"
+
+
 class NodeLogical:
     pass
 

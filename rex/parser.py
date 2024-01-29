@@ -682,8 +682,8 @@ class Parser:
                 node = NodeString(self.lexer.token.value)
             case Reserved.TRUE | Reserved.FALSE:
                 node = NodeBool(self.token == Reserved.TRUE)
-            case _:
-                self.error("Неопознанный тип данных!")
+            case Reserved.NIL:
+                node = NodeNil()
         self.next_token()
         return node
 
