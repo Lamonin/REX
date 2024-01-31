@@ -57,7 +57,7 @@ class SymTable:
 
     def dispose_local_namespace(self):
         if len(self.name_spaces) <= 1:
-            self.error("Попытка уничтожить глобальное пространство имен!")
+            self.error("Попытка уничтожить глобальное пространство имен.")
         self.name_spaces.pop()
 
     def add_variable(self, name: str, value: Variable):
@@ -104,15 +104,15 @@ class SymTable:
 
     def check_variable_presence(self, name: str):
         if not self.variable_exist(name):
-            self.error(f"Переменная {name} не объявлена!")
+            self.error(f"Переменная {name} не объявлена.")
 
     def check_function_presence(self, name: str):
         if not self.function_exist(name):
-            self.error(f"Функция {name} не объявлена!")
+            self.error(f"Функция {name} не объявлена.")
 
     def check_variable_is_array(self, name):
         if not self.compare_variable_type(name, Auto) and not self.compare_variable_type(name, Array):
-            self.error(f"Переменная {name} не является массивом!")
+            self.error(f"Переменная {name} не является массивом.")
 
     def check_function_arguments_count(self, name: str, args_count: int):
         f = self.get_function(name)

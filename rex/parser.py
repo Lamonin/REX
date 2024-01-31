@@ -542,7 +542,7 @@ class Parser:
             else:
                 if last_parsed_is_op:
                     if self.token not in unary_ops:
-                        self.error(f"Неправильный унарный оператор {self.token}")
+                        self.error(f"Неожиданный унарный оператор {self.token}")
                     temp_stack.append(unary_ops[self.token])
                 else:
                     last_parsed_is_op = True

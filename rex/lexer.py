@@ -72,6 +72,9 @@ class Lexer:
         self.char_pos += value - self.position
         self.position = value
 
+    def error(self, message: str):
+        raise LexicalError(f"({self.line - 1}, {self.char_pos}) : {message}")
+
     def next_token(self) -> bool:
         code_len = len(self.code)
 
@@ -156,7 +159,7 @@ class Lexer:
                     example = self.code[start_pos:-1]
                 else:
                     example = self.code[start_pos: start_pos + 9]
-                raise LexicalError(f"Incorrect string literal: {example}...")
+                self.error(f"Incorrect string literal: {example}...")
         # NUMBERS
         elif char().isdigit():
             start_pos = self.pos
@@ -196,7 +199,7 @@ class Lexer:
                     and char() not in ops
                     and char() not in [")", "]", "<", ">"]
             ):
-                raise LexicalError(
+                self.error(
                     f"Incorrect number token: {self.code[start_pos:self.pos + 1]}"
                 )
 
@@ -208,9 +211,7 @@ class Lexer:
                     token_type, potential_num, pos=(self.line, start_char_pos)
                 )
             else:
-                raise LexicalError(
-                    f"Incorrect number token: {self.code[start_pos:self.pos + 1]}"
-                )
+                self.error(f"Incorrect number token: {self.code[start_pos:self.pos + 1]}")
 
         # KEYWORD OR IDENTIFIER
         elif char().isalpha() or char() == ["_"]:
@@ -223,7 +224,7 @@ class Lexer:
             potential_id = self.code[start_pos: self.pos]
 
             if not self.trnslt.is_id(potential_id):
-                raise LexicalError(f"Incorrect id token: {self.code[start_pos:self.pos]}")
+                self.error(f"Incorrect id token: {self.code[start_pos:self.pos]}")
 
             if potential_id in keywords:
                 self.token = Token(
@@ -235,6 +236,6 @@ class Lexer:
                 )
             prev_char()
         else:
-            raise LexicalError("Incorrect token: " + char())
+            self.error("Incorrect symbol: " + char())
 
         return True
