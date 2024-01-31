@@ -526,7 +526,7 @@ class NodeArray(Node):
         self.args = args
 
     def generate(self):
-        return str(self.args) if self.args is not None else "[]"
+        return f"c({str(self.args)})" if self.args is not None else "c()"
 
     def iterate(self) -> list:
         return self.args.iterate() if self.args is not None else super().iterate()
