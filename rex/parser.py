@@ -85,10 +85,10 @@ class Parser:
                     return True
         return True
 
-    def find_string_operand(self, node: Node) -> bool:
+    def is_string_operand(self, node: Node) -> bool:
         node = get_node_without_par(node)
         if issubclass(type(node), NodeBinOperator):
-            return self.find_string_operand(node.left) and self.find_string_operand(node.right)
+            return self.is_string_operand(node.left) and self.is_string_operand(node.right)
         elif not issubclass(type(node), NodeString):
             if isinstance(node, NodeFuncCall):
                 rt = self.symtable.get_function(node.id).return_type
@@ -98,10 +98,10 @@ class Parser:
             return nt is StringType or nt is AnyType
         return True
 
-    def find_numeric_operand(self, node: Node) -> bool:
+    def is_numeric_operand(self, node: Node) -> bool:
         node = get_node_without_par(node)
         if issubclass(type(node), NodeBinOperator):
-            return self.find_numeric_operand(node.left) and self.find_numeric_operand(node.right)
+            return self.is_numeric_operand(node.left) and self.is_numeric_operand(node.right)
         elif not issubclass(type(node), NodeInteger) and not issubclass(type(node), NodeFloat):
             if isinstance(node, NodeFuncCall):
                 rt = self.symtable.get_function(node.id).return_type
@@ -482,17 +482,24 @@ class Parser:
                             f"{get_node_without_par(right_operand).__class__.__name__}"
                         )
                 if top_of_temp_stack in {Operators.PLUS}:
-                    string_flag = self.find_string_operand(left_operand) and self.find_string_operand(right_operand)
-                    numeric_flag = self.find_numeric_operand(left_operand) and self.find_numeric_operand(right_operand)
-                    if not string_flag and not numeric_flag:
-                        self.error(f"Операндами операции {top_of_temp_stack} должны быть одного типа!")
+                    is_left_string = self.is_string_operand(left_operand)
+                    is_left_numeric = self.is_numeric_operand(left_operand)
+                    is_right_string = self.is_string_operand(right_operand)
+                    is_right_numeric = self.is_numeric_operand(right_operand)
+
+                    if is_left_string and (not is_right_string or is_right_numeric):
+                        self.error(f"Ожидалось строковое значение, а получено "
+                                   f"{get_node_without_par(right_operand).__class__.__name__}")
+                    elif is_left_numeric and (not is_right_numeric or is_right_string):
+                        self.error(f"Ожидалось численное значение, а получено "
+                                   f"{get_node_without_par(right_operand).__class__.__name__}")
+
                 if top_of_temp_stack in {Operators.MINUS, Operators.MOD, Operators.ASTERISK, Operators.DEGREE, Operators.SLASH}:
-                    string_flag = self.find_string_operand(left_operand) and self.find_string_operand(right_operand)
-                    numeric_flag = self.find_numeric_operand(left_operand) and self.find_numeric_operand(right_operand)
-                    if not numeric_flag and string_flag:
-                        self.error(f"Операндами операции {top_of_temp_stack} не могут быть типа String!")
-                    elif not numeric_flag:
-                        self.error(f"Операндами операции {top_of_temp_stack} должны быть либо Integer, либо Float!")
+                    numeric_flag = self.is_numeric_operand(left_operand) and self.is_numeric_operand(right_operand)
+                    if not numeric_flag:
+                        self.error(f"Ожидалось численное значение, а получено "
+                                   f"{get_node_without_par(right_operand).__class__.__name__}")
+
 
                 out_stack.append(bin_ops[top_of_temp_stack](left_operand, right_operand))
             elif top_of_temp_stack == Special.LPAR:
