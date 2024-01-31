@@ -487,10 +487,10 @@ class Parser:
                     is_right_string = self.is_string_operand(right_operand)
                     is_right_numeric = self.is_numeric_operand(right_operand)
 
-                    if is_left_string and (not is_right_string or is_right_numeric):
+                    if is_left_string and not is_right_string:
                         self.error(f"Ожидалось строковое значение, а получено "
                                    f"{get_node_without_par(right_operand).__class__.__name__}")
-                    elif is_left_numeric and (not is_right_numeric or is_right_string):
+                    elif is_left_numeric and not is_right_numeric:
                         self.error(f"Ожидалось численное значение, а получено "
                                    f"{get_node_without_par(right_operand).__class__.__name__}")
 
