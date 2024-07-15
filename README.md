@@ -1,9 +1,9 @@
-# REX - simple Ruby lexer
+# REX - транслятор с языка Ruby на язык R.
 
 **Содержание:**
 <!-- TOC -->
 
-* [REX - simple Ruby lexer](#rex---simple-ruby-lexer)
+* [REX - Ruby to R translator](#rex---simple-ruby-lexer)
 * [Оптимизация транслируемого кода](#оптимизация-транслируемого-кода)
 * [Тесты](#тесты)
     * [Лексер](#лексер)
